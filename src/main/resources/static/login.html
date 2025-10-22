@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Data Center Working Permit System</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container-sm" style="margin-top: 5rem;">
+        <div class="card">
+            <div class="card-header text-center">
+                <h1 class="card-title">🔒 Data Center Working Permit</h1>
+                <p style="color: var(--text-light);">Login to your account</p>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label class="form-label" for="username">Username</label>
+                    <input type="text" id="username" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input type="password" id="password" class="form-control" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    Login
+                </button>
+            </form>
+
+            <div class="text-center mt-3">
+                <p>Don't have an account? <a href="/register.html">Register here</a></p>
+            </div>
+        </div>
+
+        <!-- Quick Test Accounts -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h3 class="card-title">🧪 Test Accounts</h3>
+            </div>
+            <div class="grid grid-2 gap-2">
+                <button class="btn btn-outline" onclick="fillLogin('visitor1', 'password')">
+                    Visitor
+                </button>
+                <button class="btn btn-outline" onclick="fillLogin('pic1', 'password')">
+                    PIC
+                </button>
+                <button class="btn btn-outline" onclick="fillLogin('manager1', 'password')">
+                    Manager
+                </button>
+                <button class="btn btn-outline" onclick="fillLogin('security1', 'password')">
+                    Security
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        // Check if already logged in
+        if (Auth.isAuthenticated()) {
+            window.location.href = '/dashboard.html';
+        }
+
+        // Quick fill for testing
+        function fillLogin(username, password) {
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = password;
+        }
+
+        // Handle login form submission
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = '';
+            
+            try {
+                UI.showLoading(true);
+                const result = await Auth.login(username, password);
+                
+                if (result.success) {
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-success">
+                            Login successful! Redirecting to dashboard...
+                        </div>
+                    `;
+                    
+                    setTimeout(() => {
+                        window.location.href = '/dashboard.html';
+                    }, 1000);
+                } else {
+                    throw new Error(result.message || 'Login failed');
+                }
+            } catch (error) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-error">
+                        ${error.message}
+                    </div>
+                `;
+            } finally {
+                UI.showLoading(false);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Working Permit System</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="/" class="navbar-brand">🏢 DC Working Permit</a>
+            <ul class="navbar-nav">
+                <li><a href="/dashboard.html" class="nav-link">Dashboard</a></li>
+                <li><a href="/permits.html" class="nav-link">Permits</a></li>
+                <li><a href="/approvals.html" class="nav-link">Approvals</a></li>
+                <li><a href="#" class="nav-link" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container" style="margin-top: 2rem;">
+        <div class="d-flex justify-between align-center mb-4">
+            <h1>Dashboard</h1>
+            <span id="user-info" class="badge badge-info"></span>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-4 mb-4" id="stats-container"></div>
+
+        <!-- Recent Permits -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Recent Permits</h2>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Permit Number</th>
+                            <th>Visitor</th>
+                            <th>Purpose</th>
+                            <th>Scheduled Time</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="permits-table-body">
+                        <tr>
+                            <td colspan="6" class="text-center">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        Auth.checkAuth();
+        const user = Auth.getUser();
+        
+        // Display user info
+        document.getElementById('user-info').textContent = 
+            `${user.fullName} (${user.role})`;
+        
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                UI.showLoading(true);
+                
+                // Get all permits
+                const permits = await Permits.getAll();
+                
+                // Calculate stats
+                const stats = {
+                    total: permits.length,
+                    pending: permits.filter(p => p.status.includes('PENDING')).length,
+                    approved: permits.filter(p => p.status === 'APPROVED').length,
+                    active: permits.filter(p => p.status === 'ACTIVE').length
+                };
+                
+                // Display stats
+                const statsContainer = document.getElementById('stats-container');
+                statsContainer.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.total}</div>
+                        <div class="stat-label">Total Permits</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                        <div class="stat-value">${stats.pending}</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #059669);">
+                        <div class="stat-value">${stats.approved}</div>
+                        <div class="stat-label">Approved</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                        <div class="stat-value">${stats.active}</div>
+                        <div class="stat-label">Active</div>
+                    </div>
+                `;
+                
+                // Display recent permits (last 10)
+                const recentPermits = permits.slice(-10).reverse();
+                const tbody = document.getElementById('permits-table-body');
+                
+                if (recentPermits.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center">No permits found</td>
+                        </tr>
+                    `;
+                } else {
+                    tbody.innerHTML = recentPermits.map(permit => `
+                        <tr>
+                            <td>${permit.permitNumber}</td>
+                            <td>${permit.visitor.fullName}</td>
+                            <td>${permit.visitPurpose}</td>
+                            <td>${UI.formatDate(permit.scheduledStartTime)}</td>
+                            <td>
+                                <span class="badge ${UI.getStatusBadge(permit.status)}">
+                                    ${permit.status}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="/permit-detail.html?id=${permit.id}" class="btn btn-sm btn-primary">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                UI.showAlert('Error loading dashboard: ' + error.message, 'error');
+            } finally {
+                UI.showLoading(false);
+            }
+        }
+        
+        loadDashboard();
+    </script>
+</body>
+</html>

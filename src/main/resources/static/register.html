@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Data Center Working Permit System</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container-sm" style="margin-top: 3rem; margin-bottom: 3rem;">
+        <div class="card">
+            <div class="card-header text-center">
+                <h1 class="card-title">📝 Create Account</h1>
+                <p style="color: var(--text-light);">Register for Working Permit System</p>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <form id="register-form">
+                <div class="form-group">
+                    <label class="form-label" for="username">Username *</label>
+                    <input type="text" id="username" class="form-control" required minlength="3">
+                    <small class="form-error" id="username-error"></small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="fullName">Full Name *</label>
+                    <input type="text" id="fullName" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="email">Email *</label>
+                    <input type="email" id="email" class="form-control" required>
+                    <small class="form-error" id="email-error"></small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="phoneNumber">Phone Number *</label>
+                    <input type="tel" id="phoneNumber" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="company">Company</label>
+                    <input type="text" id="company" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="idCardNumber">ID Card Number (KTP/Passport)</label>
+                    <input type="text" id="idCardNumber" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="role">Register as *</label>
+                    <select id="role" class="form-select" required>
+                        <option value="VISITOR">Visitor (External)</option>
+                        <option value="PIC">PIC (Person In Charge)</option>
+                        <option value="MANAGER">Manager</option>
+                        <option value="SECURITY">Security Guard</option>
+                        <option value="ADMIN">Admin</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Password *</label>
+                    <input type="password" id="password" class="form-control" required minlength="6">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="confirmPassword">Confirm Password *</label>
+                    <input type="password" id="confirmPassword" class="form-control" required minlength="6">
+                    <small class="form-error" id="password-error"></small>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    Register
+                </button>
+            </form>
+
+            <div class="text-center mt-3">
+                <p>Already have an account? <a href="/login.html">Login here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        // Check if already logged in
+        if (Auth.isAuthenticated()) {
+            window.location.href = '/dashboard.html';
+        }
+
+        // Check username availability
+        document.getElementById('username').addEventListener('blur', async (e) => {
+            const username = e.target.value;
+            const errorEl = document.getElementById('username-error');
+            
+            if (username.length >= 3) {
+                try {
+                    const response = await API.get(`/auth/check-username?username=${username}`);
+                    if (response.exists) {
+                        errorEl.textContent = 'Username already taken';
+                        e.target.style.borderColor = 'var(--danger-color)';
+                    } else {
+                        errorEl.textContent = '';
+                        e.target.style.borderColor = 'var(--secondary-color)';
+                    }
+                } catch (error) {
+                    console.error('Error checking username:', error);
+                }
+            }
+        });
+
+        // Check email availability
+        document.getElementById('email').addEventListener('blur', async (e) => {
+            const email = e.target.value;
+            const errorEl = document.getElementById('email-error');
+            
+            if (email) {
+                try {
+                    const response = await API.get(`/auth/check-email?email=${email}`);
+                    if (response.exists) {
+                        errorEl.textContent = 'Email already registered';
+                        e.target.style.borderColor = 'var(--danger-color)';
+                    } else {
+                        errorEl.textContent = '';
+                        e.target.style.borderColor = 'var(--secondary-color)';
+                    }
+                } catch (error) {
+                    console.error('Error checking email:', error);
+                }
+            }
+        });
+
+        // Handle registration form submission
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const passwordError = document.getElementById('password-error');
+            const alertContainer = document.getElementById('alert-container');
+            
+            alertContainer.innerHTML = '';
+            passwordError.textContent = '';
+            
+            // Validate password match
+            if (password !== confirmPassword) {
+                passwordError.textContent = 'Passwords do not match';
+                return;
+            }
+            
+            // Collect form data
+            const userData = {
+                username: document.getElementById('username').value,
+                fullName: document.getElementById('fullName').value,
+                email: document.getElementById('email').value,
+                phoneNumber: document.getElementById('phoneNumber').value,
+                company: document.getElementById('company').value || null,
+                idCardNumber: document.getElementById('idCardNumber').value || null,
+                role: document.getElementById('role').value,
+                password: password
+            };
+            
+            try {
+                UI.showLoading(true);
+                const result = await Auth.register(userData);
+                
+                if (result.success) {
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-success">
+                            Registration successful! Redirecting to login...
+                        </div>
+                    `;
+                    
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 2000);
+                }
+            } catch (error) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-error">
+                        ${error.message}
+                    </div>
+                `;
+            } finally {
+                UI.showLoading(false);
+            }
+        });
+    </script>
+</body>
+</html>

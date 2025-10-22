@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Center Working Permit System</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="/" class="navbar-brand">🏢 DC Working Permit</a>
+            <ul class="navbar-nav">
+                <li><a href="/login.html" class="nav-link">Login</a></li>
+                <li><a href="/register.html" class="nav-link">Register</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container" style="margin-top: 5rem;">
+        <div class="text-center mb-4">
+            <h1 style="font-size: 3rem; margin-bottom: 1rem;">
+                🏢 Data Center Working Permit System
+            </h1>
+            <p style="font-size: 1.25rem; color: var(--text-light);">
+                Complete workflow management for data center visitor permits with 2FA authentication
+            </p>
+        </div>
+
+        <div class="grid grid-3 gap-3 mt-4">
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">📝 Easy Application</h3>
+                <p>Submit working permit requests with complete details including purpose, schedule, and equipment list.</p>
+            </div>
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">✅ Two-Level Approval</h3>
+                <p>PIC review and Manager approval workflow ensures proper authorization before granting access.</p>
+            </div>
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">🔐 QR Code & OTP</h3>
+                <p>Secure 2FA authentication with QR Code and One-Time Password for visitor verification.</p>
+            </div>
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">📱 Real-time Tracking</h3>
+                <p>Monitor visitor check-in, access logs, and movement throughout the data center.</p>
+            </div>
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">🔔 Notifications</h3>
+                <p>Automatic email and SMS notifications for all permit status changes and approvals.</p>
+            </div>
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">💳 Temporary ID Cards</h3>
+                <p>RFID-enabled temporary access cards with automatic expiration management.</p>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <h2 class="mb-3">Ready to get started?</h2>
+            <div class="d-flex justify-center gap-2">
+                <a href="/register.html" class="btn btn-primary">Register Now</a>
+                <a href="/login.html" class="btn btn-outline">Login</a>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <h3 class="mb-3">🔄 Complete Workflow</h3>
+            <div class="grid grid-3 gap-2">
+                <div>
+                    <h4 style="color: var(--primary-color);">Phase 1: Application</h4>
+                    <ul style="list-style-position: inside;">
+                        <li>Submit permit request</li>
+                        <li>PIC review</li>
+                        <li>Manager approval</li>
+                        <li>QR Code & OTP generation</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="color: var(--secondary-color);">Phase 2: Arrival</h4>
+                    <ul style="list-style-position: inside;">
+                        <li>QR Code & OTP verification</li>
+                        <li>Security check-in</li>
+                        <li>Temporary ID card issuance</li>
+                        <li>Access grant</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="color: var(--warning-color);">Phase 3: Access</h4>
+                    <ul style="list-style-position: inside;">
+                        <li>RFID door access</li>
+                        <li>Activity monitoring</li>
+                        <li>Check-out process</li>
+                        <li>Permit completion</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer style="background-color: var(--dark-bg); color: white; padding: 2rem 0; margin-top: 5rem;">
+        <div class="container text-center">
+            <p>&copy; 2025 Data Center Working Permit System. All rights reserved.</p>
+            <p style="color: var(--text-light); margin-top: 0.5rem;">
+                Built with Spring Boot 3.2.0 + Thymeleaf + H2 Database
+            </p>
+        </div>
+    </footer>
+
+    <script src="/js/api.js"></script>
+    <script>
+        // Redirect to dashboard if already logged in
+        if (Auth.isAuthenticated()) {
+            window.location.href = '/dashboard.html';
+        }
+    </script>
+</body>
+</html>
