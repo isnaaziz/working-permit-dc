@@ -34,6 +34,7 @@ public class ApprovalActionService {
      * PIC Review - First level approval
      */
     @Transactional
+    @SuppressWarnings("null")
     public void picReview(Long permitId, User pic, ApprovalRequest request) {
         if (permitId == null)
             throw new IllegalArgumentException("Permit ID cannot be null");

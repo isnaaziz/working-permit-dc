@@ -30,6 +30,7 @@ public class PermitCreationService {
      * Create new working permit request
      */
     @Transactional
+    @SuppressWarnings("null")
     public WorkingPermit createPermit(Long visitorId, WorkingPermitRequest request) {
         if (visitorId == null)
             throw new IllegalArgumentException("Visitor ID cannot be null");

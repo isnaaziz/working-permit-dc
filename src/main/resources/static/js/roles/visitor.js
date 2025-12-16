@@ -38,25 +38,38 @@ const VisitorDashboard = {
         const container = document.getElementById('stats-container');
         container.innerHTML = `
             <div class="stat-card">
+                <div class="d-flex justify-between items-center mb-2">
+                    <div class="stat-label">Total Permits</div>
+                    <i class="ri-article-line text-muted" style="font-size: 1.5rem;"></i>
+                </div>
                 <div class="stat-value">${stats.total}</div>
-                <div class="stat-label">Total Permits</div>
             </div>
             <div class="stat-card" style="border-left: 4px solid var(--warning);">
+                <div class="d-flex justify-between items-center mb-2">
+                    <div class="stat-label">Pending</div>
+                    <i class="ri-time-line text-warning" style="font-size: 1.5rem;"></i>
+                </div>
                 <div class="stat-value text-muted" style="color: var(--warning);">${stats.pending}</div>
-                <div class="stat-label">Pending</div>
             </div>
             <div class="stat-card" style="border-left: 4px solid var(--success);">
+                <div class="d-flex justify-between items-center mb-2">
+                    <div class="stat-label">Approved</div>
+                    <i class="ri-check-double-line text-success" style="font-size: 1.5rem;"></i>
+                </div>
                 <div class="stat-value text-success" style="color: var(--success);">${stats.approved}</div>
-                <div class="stat-label">Approved</div>
             </div>
             <div class="stat-card" style="border-left: 4px solid var(--info);">
+               <div class="d-flex justify-between items-center mb-2">
+                    <div class="stat-label">Active Now</div>
+                    <i class="ri-run-line text-info" style="font-size: 1.5rem;"></i>
+                </div>
                 <div class="stat-value text-info" style="color: var(--info);">${stats.active}</div>
-                <div class="stat-label">Active Now</div>
             </div>
         `;
     },
 
     async loadPermits() {
+        // ... (headers setup)
         const tbody = document.getElementById('table-body');
         const thead = document.getElementById('table-head');
 
@@ -70,12 +83,12 @@ const VisitorDashboard = {
             </tr>
         `;
 
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4"><div class="d-flex justify-center items-center gap-2 text-muted"><i class="ri-loader-4-line ri-spin"></i> Loading...</div></td></tr>';
 
         try {
             const permits = await Permits.getByVisitor(this.user.id);
             if (!permits || permits.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">No permits found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-muted">No permits found.</td></tr>';
                 return;
             }
 
@@ -83,15 +96,17 @@ const VisitorDashboard = {
 
             tbody.innerHTML = sorted.map(p => `
                 <tr>
-                    <td class="font-bold">${p.permitNumber}</td>
+                    <td class="font-bold text-primary">${p.permitNumber}</td>
                     <td>${p.visitPurpose}</td>
                     <td class="text-sm">
-                        <div>Start: ${UI.formatDate(p.scheduledStartTime)}</div>
-                        <div class="text-muted">End: ${UI.formatDate(p.scheduledEndTime)}</div>
+                        <div class="d-flex items-center gap-2"><i class="ri-calendar-event-line text-muted"></i> ${UI.formatDate(p.scheduledStartTime)}</div>
+                        <div class="text-muted d-flex items-center gap-2" style="margin-top:0.25rem;"><i class="ri-arrow-right-line"></i> ${UI.formatDate(p.scheduledEndTime)}</div>
                     </td>
                     <td><span class="badge ${UI.getStatusBadge(p.status)}">${p.status}</span></td>
                     <td>
-                        <button class="btn btn-sm btn-outline text-xs" onclick="VisitorDashboard.viewDetails(${p.id})">Details</button>
+                        <button class="btn btn-sm btn-outline text-xs" onclick="VisitorDashboard.viewDetails(${p.id})">
+                            <i class="ri-eye-line"></i> Details
+                        </button>
                     </td>
                 </tr>
             `).join('');

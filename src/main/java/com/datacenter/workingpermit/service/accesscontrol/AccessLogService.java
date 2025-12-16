@@ -24,6 +24,7 @@ public class AccessLogService {
      * Log access attempt
      */
     @Transactional
+    @SuppressWarnings("null")
     public void logAccess(
             WorkingPermit permit,
             AccessLog.AccessType accessType,

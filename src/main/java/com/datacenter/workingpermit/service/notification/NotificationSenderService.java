@@ -31,7 +31,9 @@ public class NotificationSenderService {
     /**
      * Send notification
      */
+    @org.springframework.scheduling.annotation.Async
     @Transactional
+    @SuppressWarnings("null")
     public void sendNotification(
             User recipient,
             WorkingPermit permit,

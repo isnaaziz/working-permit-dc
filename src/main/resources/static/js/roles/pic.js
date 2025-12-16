@@ -48,12 +48,18 @@ const PICDashboard = {
         const container = document.getElementById('stats-container');
         container.innerHTML = `
             <div class="stat-card" style="border-left: 4px solid var(--warning);">
+                <div class="d-flex justify-between items-center mb-2">
+                    <div class="stat-label">Pending Review</div>
+                    <i class="ri-search-eye-line text-warning" style="font-size: 1.5rem;"></i>
+                </div>
                 <div class="stat-value" style="color: var(--warning);">${stats['Pending Review']}</div>
-                <div class="stat-label">Pending Review</div>
             </div>
             <div class="stat-card" style="border-left: 4px solid var(--primary);">
+                <div class="d-flex justify-between items-center mb-2">
+                    <div class="stat-label">My Requests</div>
+                    <i class="ri-file-user-line text-primary" style="font-size: 1.5rem;"></i>
+                </div>
                 <div class="stat-value text-primary">${stats['My Requests']}</div>
-                <div class="stat-label">My Permit Requests</div>
             </div>
         `;
     },
@@ -73,13 +79,13 @@ const PICDashboard = {
             </tr>
         `;
 
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4">Loading approvals...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4"><div class="d-flex justify-center items-center gap-2 text-muted"><i class="ri-loader-4-line ri-spin"></i> Loading approvals...</div></td></tr>';
 
         try {
             const approvals = await Approvals.getPICPending(this.user.id);
 
             if (!approvals || approvals.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4">No pending approvals.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-muted">No pending approvals.</td></tr>';
                 return;
             }
 
@@ -89,16 +95,20 @@ const PICDashboard = {
                 const p = app.workingPermit;
                 return `
                 <tr>
-                    <td class="font-bold">${p.permitNumber}</td>
+                    <td class="font-bold text-primary">${p.permitNumber}</td>
                     <td>
-                        <div>${p.visitor.fullName}</div>
-                        <small class="text-muted">${p.visitor.company || 'External'}</small>
+                        <div class="font-medium">${p.visitor.fullName}</div>
+                        <small class="text-muted"><i class="ri-building-line text-xs"></i> ${p.visitor.company || 'External'}</small>
                     </td>
                     <td>${p.visitPurpose}</td>
-                    <td>${UI.formatDate(app.createdAt)}</td>
+                    <td>
+                         <div class="d-flex items-center gap-2"><i class="ri-time-line text-muted"></i> ${UI.formatDate(app.createdAt)}</div>
+                    </td>
                     <td><span class="badge badge-warning">PENDING REVIEW</span></td>
                     <td>
-                        <button class="btn btn-sm btn-primary text-xs" onclick="PICDashboard.reviewPermit(${p.id})">Review</button>
+                        <button class="btn btn-sm btn-primary text-xs" onclick="PICDashboard.reviewPermit(${p.id})">
+                             <i class="ri-edit-circle-line"></i> Review
+                        </button>
                     </td>
                 </tr>
             `}).join('');

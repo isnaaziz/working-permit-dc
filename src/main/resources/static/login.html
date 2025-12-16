@@ -4,70 +4,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | Working Permit System</title>
+    <meta name="description" content="Secure Login - DC Access Control System">
+    <title>Login | DC Access Control</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" rel="stylesheet" />
 </head>
 
-<body class="d-flex items-center justify-center" style="min-height: 100vh; background-color: var(--bg-body);">
-    <div class="container-sm w-full" style="max-width: 450px;">
+<body
+    style="min-height: 100vh; background-color: var(--bg-body); display: flex; align-items: center; justify-content: center;">
+
+    <div style="width: 100%; max-width: 420px; padding: 1rem;">
+
         <div class="text-center mb-4">
-            <a href="/" style="font-size: 2.5rem; text-decoration: none;">🏢</a>
-            <h2 class="mt-2 text-primary">Welcome Back</h2>
-            <p>Sign in to access the permit portal</p>
+            <div class="d-flex justify-center items-center gap-2 mb-2">
+                <i class="ri-shield-check-fill text-primary" style="font-size: 2.5rem;"></i>
+            </div>
+            <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--primary);">Welcome Back</h1>
+            <p class="text-muted">Sign in to manage your working permits</p>
         </div>
 
-        <div class="card shadow-lg">
+        <div class="card shadow-md border" style="padding: 2rem;">
             <div id="alert-container"></div>
 
             <form id="login-form">
                 <div class="form-group">
-                    <label class="form-label" for="username">Username</label>
-                    <input type="text" id="username" class="form-control" placeholder="Enter your username" required
-                        autocomplete="username">
+                    <label class="form-label" for="username">Username / ID</label>
+                    <div style="position: relative;">
+                        <i class="ri-user-line"
+                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-light);"></i>
+                        <input type="text" id="username" class="form-control" placeholder="Enter your username" required
+                            autocomplete="username" style="padding-left: 2.75rem;">
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <div class="d-flex justify-between items-center mb-1">
                         <label class="form-label" for="password" style="margin-bottom: 0;">Password</label>
-                        <!-- <a href="#" class="text-xs text-primary">Forgot password?</a> -->
                     </div>
-                    <input type="password" id="password" class="form-control" placeholder="••••••••" required
-                        autocomplete="current-password">
+                    <div style="position: relative;">
+                        <i class="ri-lock-line"
+                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-light);"></i>
+                        <input type="password" id="password" class="form-control" placeholder="••••••••" required
+                            autocomplete="current-password" style="padding-left: 2.75rem;">
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary btn-block">
-                        Sign In
+                <div class="form-group" style="margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary w-full"
+                        style="justify-content: center; padding: 0.75rem;">
+                        Sign In <i class="ri-arrow-right-line" style="margin-left: 0.5rem;"></i>
                     </button>
                 </div>
             </form>
 
-            <div class="text-center mt-4">
-                <p class="text-sm">
+            <div class="text-center mt-4 pt-4" style="border-top: 1px solid var(--divider);">
+                <p class="text-sm text-muted">
                     Don't have an account?
-                    <a href="/register.html" class="font-bold text-primary">Create Account</a>
+                    <a href="/register.html" class="font-bold" style="color: var(--accent);">Create Account</a>
                 </p>
             </div>
         </div>
 
-        <!-- Quick Test Accounts Helper -->
-        <div class="card mt-4 p-3"
-            style="background: transparent; border: 1px dashed var(--border-light); box-shadow: none;">
-            <p class="text-center text-xs text-uppercase font-bold text-muted mb-2">Dev: Quick Login</p>
-            <div class="grid grid-cols-4 gap-2">
-                <button class="btn btn-secondary text-xs p-1"
+        <!-- Developer Quick Login (Optional, keep for convenience but style it subtly) -->
+        <div class="mt-4 text-center">
+            <p class="text-xs text-uppercase font-bold text-muted mb-2 tracking-wider">Develoment Mode: Quick Login</p>
+            <div class="d-flex justify-center gap-2 flex-wrap">
+                <button class="btn btn-sm btn-outline text-xs px-2 py-1"
                     onclick="fillLogin('visitor1', 'password123')">Visitor</button>
-                <button class="btn btn-secondary text-xs p-1" onclick="fillLogin('pic1', 'password123')">PIC</button>
-                <button class="btn btn-secondary text-xs p-1"
+                <button class="btn btn-sm btn-outline text-xs px-2 py-1"
+                    onclick="fillLogin('pic1', 'password123')">PIC</button>
+                <button class="btn btn-sm btn-outline text-xs px-2 py-1"
                     onclick="fillLogin('manager1', 'password123')">Manager</button>
-                <button class="btn btn-secondary text-xs p-1"
+                <button class="btn btn-sm btn-outline text-xs px-2 py-1"
                     onclick="fillLogin('security1', 'password123')">Security</button>
             </div>
         </div>
+
+        <div class="text-center mt-8 text-xs text-muted">
+            &copy; 2024 Working Permit System. Secure Access Control.
+        </div>
     </div>
 
-    <script src="/js/api.js"></script>
-    <script src="/js/utils.js"></script>
+    <script src="/js/api.js?v=14"></script>
+    <script src="/js/utils.js?v=14"></script>
     <script>
         // Check if already logged in
         if (Auth.isAuthenticated()) {
@@ -87,21 +106,21 @@
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
 
             const alertContainer = document.getElementById('alert-container');
             alertContainer.innerHTML = '';
 
             try {
-                // UI.showLoading(true); // Assuming this might block the button text
-                btn.innerHTML = '<span class="spinner" style="width: 1rem; height: 1rem; border-width: 2px; margin: 0;"></span> Signing In...';
+                btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Signing In...';
                 btn.disabled = true;
 
                 const result = await Auth.login(username, password);
 
                 if (result.success) {
                     alertContainer.innerHTML = `
-                        <div class="alert alert-success text-sm">
-                            Login successful! Redirecting...
+                        <div style="background: var(--success); color: white; padding: 0.75rem; border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: 0.9rem; text-align: center;">
+                            <i class="ri-check-line"></i> Login successful! Redirecting...
                         </div>
                     `;
 
@@ -113,11 +132,11 @@
                 }
             } catch (error) {
                 alertContainer.innerHTML = `
-                    <div class="alert alert-error text-sm">
-                        ${error.message}
+                     <div style="background: var(--danger); color: white; padding: 0.75rem; border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: 0.9rem; text-align: center;">
+                        <i class="ri-error-warning-line"></i> ${error.message}
                     </div>
                 `;
-                btn.innerHTML = 'Sign In';
+                btn.innerHTML = originalText;
                 btn.disabled = false;
             }
         });

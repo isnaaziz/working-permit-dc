@@ -78,8 +78,8 @@ const Access = {
         return await API.post('/access/check-in', checkInData);
     },
 
-    async checkOut(permitNumber) {
-        return await API.post(`/access/check-out?permitNumber=${permitNumber}`, {});
+    async checkOut(permitId) {
+        return await API.post(`/access/check-out?permitId=${permitId}`, {});
     },
 
     async getLogs() {

@@ -22,6 +22,7 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final WorkingPermitRepository permitRepository;
     private final ApprovalRepository approvalRepository;
+    private final TempIdCardRepository idCardRepository;
     private final PasswordEncoder passwordEncoder;
 
     private final AtomicInteger permitCounter = new AtomicInteger(1);
@@ -186,6 +187,18 @@ public class DataSeeder implements CommandLineRunner {
                 .actualCheckInTime(LocalDateTime.now().minusHours(1))
                 .build();
         permitRepository.save(permit4);
+
+        // Create TempIdCard for Active Permit to prevent "ID card not found" error
+        // during checkout
+        TempIdCard idCard4 = TempIdCard.builder()
+                .workingPermit(permit4)
+                .cardNumber("TMP-" + System.currentTimeMillis())
+                .rfidTag("RF-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                .issuedAt(LocalDateTime.now().minusHours(1))
+                .expiresAt(permit4.getScheduledEndTime())
+                .isActive(true)
+                .build();
+        idCardRepository.save(idCard4);
 
         // Permit 5: COMPLETED - Sudah selesai
         WorkingPermit permit5 = WorkingPermit.builder()
