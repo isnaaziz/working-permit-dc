@@ -49,6 +49,7 @@ public class WorkingPermit {
     @Column(nullable = false)
     private LocalDateTime scheduledEndTime;
 
+    @Builder.Default
     @ElementCollection
     @CollectionTable(name = "permit_equipment", joinColumns = @JoinColumn(name = "permit_id"))
     @Column(name = "equipment")
@@ -74,10 +75,12 @@ public class WorkingPermit {
 
     private String rejectionReason; // Alasan jika ditolak
 
+    @Builder.Default
     @OneToMany(mappedBy = "workingPermit", cascade = CascadeType.ALL, orphanRemoval = true)
     @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Approval> approvals = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "workingPermit", cascade = CascadeType.ALL, orphanRemoval = true)
     @com.fasterxml.jackson.annotation.JsonIgnore
     private List<AccessLog> accessLogs = new ArrayList<>();

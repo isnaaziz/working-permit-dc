@@ -23,6 +23,7 @@ public class TempIdCardService {
      * Issue temporary ID card for a permit
      */
     @Transactional
+    @SuppressWarnings("null")
     public TempIdCard issueIdCard(WorkingPermit permit) {
         // Check if ID card already exists
         Optional<TempIdCard> existing = idCardRepository.findByWorkingPermit(permit);
@@ -57,7 +58,10 @@ public class TempIdCardService {
      */
     private String generateCardNumber() {
         String timestamp = String.valueOf(System.currentTimeMillis());
-        return "TMP-" + timestamp.substring(timestamp.length() - 8);
+        if (timestamp.length() > 8) {
+            return "TMP-" + timestamp.substring(timestamp.length() - 8);
+        }
+        return "TMP-" + timestamp;
     }
 
     /**
@@ -71,6 +75,7 @@ public class TempIdCardService {
      * Deactivate ID card
      */
     @Transactional
+    @SuppressWarnings("null")
     public void deactivateIdCard(Long idCardId, String reason) {
         TempIdCard idCard = idCardRepository.findById(idCardId)
                 .orElseThrow(() -> new RuntimeException("ID card not found"));
@@ -138,6 +143,7 @@ public class TempIdCardService {
      * Reissue ID card (if lost or damaged)
      */
     @Transactional
+    @SuppressWarnings("null")
     public TempIdCard reissueIdCard(Long oldCardId, String reason) {
         TempIdCard oldCard = idCardRepository.findById(oldCardId)
                 .orElseThrow(() -> new RuntimeException("ID card not found"));

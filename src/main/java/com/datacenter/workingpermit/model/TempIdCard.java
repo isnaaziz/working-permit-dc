@@ -33,6 +33,7 @@ public class TempIdCard {
     @Column(nullable = false)
     private LocalDateTime expiresAt;
 
+    @Builder.Default
     @Column(nullable = false)
     private Boolean isActive = true;
 
