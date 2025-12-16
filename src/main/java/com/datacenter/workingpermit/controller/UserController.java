@@ -1,7 +1,8 @@
 package com.datacenter.workingpermit.controller;
 
 import com.datacenter.workingpermit.model.User;
-import com.datacenter.workingpermit.service.UserService;
+import com.datacenter.workingpermit.service.user.UserActionService;
+import com.datacenter.workingpermit.service.user.UserRetrievalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +21,8 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class UserController {
 
-    private final UserService userService;
+    private final UserRetrievalService userRetrievalService;
+    private final UserActionService userActionService;
 
     /**
      * Get user by ID
@@ -28,7 +30,7 @@ public class UserController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<User> getUser(@PathVariable Long id) {
-        User user = userService.getUserById(id);
+        User user = userRetrievalService.getUserById(id);
         return ResponseEntity.ok(user);
     }
 
@@ -38,7 +40,7 @@ public class UserController {
      */
     @GetMapping("/username/{username}")
     public ResponseEntity<User> getUserByUsername(@PathVariable String username) {
-        User user = userService.getUserByUsername(username);
+        User user = userRetrievalService.getUserByUsername(username);
         return ResponseEntity.ok(user);
     }
 
@@ -49,7 +51,7 @@ public class UserController {
     @GetMapping("/role/{role}")
     public ResponseEntity<List<User>> getUsersByRole(@PathVariable String role) {
         User.UserRole userRole = User.UserRole.valueOf(role.toUpperCase());
-        List<User> users = userService.getUsersByRole(userRole);
+        List<User> users = userRetrievalService.getUsersByRole(userRole);
         return ResponseEntity.ok(users);
     }
 
@@ -59,7 +61,7 @@ public class UserController {
      */
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
-        List<User> users = userService.getAllUsers();
+        List<User> users = userRetrievalService.getAllUsers();
         return ResponseEntity.ok(users);
     }
 
@@ -72,7 +74,7 @@ public class UserController {
             @PathVariable Long id,
             @RequestBody Map<String, String> updates) {
 
-        User user = userService.getUserById(id);
+        User user = userRetrievalService.getUserById(id);
 
         if (updates.containsKey("fullName")) {
             user.setFullName(updates.get("fullName"));
@@ -86,6 +88,8 @@ public class UserController {
         if (updates.containsKey("company")) {
             user.setCompany(updates.get("company"));
         }
+
+        userActionService.updateUser(id, user);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);

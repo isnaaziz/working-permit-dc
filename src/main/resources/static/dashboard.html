@@ -1,53 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Working Permit System</title>
+    <title>Dashboard | Working Permit System</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
+
+<body class="bg-gray-50">
     <nav class="navbar">
         <div class="container navbar-content">
-            <a href="/" class="navbar-brand">🏢 DC Working Permit</a>
-            <ul class="navbar-nav">
-                <li><a href="/dashboard.html" class="nav-link">Dashboard</a></li>
-                <li><a href="/permits.html" class="nav-link">Permits</a></li>
-                <li><a href="/approvals.html" class="nav-link">Approvals</a></li>
-                <li><a href="#" class="nav-link" onclick="Auth.logout()">Logout</a></li>
-            </ul>
+            <a href="/" class="navbar-brand">
+                <span style="font-size: 1.5rem;">🏢</span>
+                <span>DC Access Control</span>
+            </a>
+            <div class="d-flex items-center gap-4">
+                <!-- Notifications -->
+                <div class="notification-wrapper" style="position: relative;">
+                    <button class="btn btn-outline btn-sm" onclick="toggleNotifications()"
+                        style="border:none; position: relative;">
+                        🔔 <span id="notif-badge" class="badge badge-danger"
+                            style="position: absolute; top: -5px; right: -5px; padding: 2px 6px; font-size: 0.7rem; display: none;">0</span>
+                    </button>
+                    <div id="notif-dropdown" class="card shadow-lg"
+                        style="display: none; position: absolute; right: 0; top: 100%; width: 300px; z-index: 1000; max-height: 400px; overflow-y: auto;">
+                        <div class="card-header d-flex justify-between items-center p-2">
+                            <h4 class="m-0 text-sm">Notifications</h4>
+                            <button class="text-xs text-primary" onclick="markAllRead()"
+                                style="background:none; border:none; cursor:pointer;">Mark all read</button>
+                        </div>
+                        <div id="notif-list" class="p-2">
+                            <div class="text-center text-muted text-xs">No new notifications</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-right d-none d-md-block">
+                    <div id="user-name" class="font-bold text-sm">Loading...</div>
+                    <div id="user-role" class="text-xs text-muted">...</div>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="openProfileModal()">Profile</button>
+                <button class="btn btn-secondary btn-sm" onclick="Auth.logout()">Log Out</button>
+            </div>
         </div>
     </nav>
 
-    <div class="container" style="margin-top: 2rem;">
-        <div class="d-flex justify-between align-center mb-4">
-            <h1>Dashboard</h1>
-            <span id="user-info" class="badge badge-info"></span>
+    <div class="container mt-4">
+        <!-- Header & Actions -->
+        <div class="d-flex justify-between items-center mb-4">
+            <div>
+                <h1>Dashboard</h1>
+                <p class="text-muted">Overview of your permit activities</p>
+            </div>
+            <button class="btn btn-primary" onclick="openCreateModal()">
+                <span style="font-size: 1.2rem; margin-right: 0.5rem;">+</span> New Permit
+            </button>
         </div>
 
         <!-- Stats Cards -->
-        <div class="grid grid-4 mb-4" id="stats-container"></div>
+        <div class="grid grid-cols-4 gap-4 mb-4" id="stats-container">
+            <!-- Populated by JS -->
+        </div>
 
-        <!-- Recent Permits -->
+        <!-- Main Content Area -->
         <div class="card">
-            <div class="card-header">
-                <h2 class="card-title">Recent Permits</h2>
+            <div class="card-header d-flex justify-between items-center">
+                <div class="d-flex gap-4" id="tab-buttons">
+                    <button class="btn btn-sm btn-primary" onclick="switchTab('permits')">My Permits</button>
+                    <button class="btn btn-sm btn-secondary" onclick="switchTab('approvals')" id="btn-approvals"
+                        style="display:none">Approvals</button>
+                    <button class="btn btn-sm btn-secondary" onclick="switchTab('logs')" id="btn-logs"
+                        style="display:none">Access Logs</button>
+                </div>
+                <button class="btn btn-sm btn-outline" onclick="loadDashboard()">Refresh</button>
             </div>
-            <div class="table-container">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Permit Number</th>
-                            <th>Visitor</th>
-                            <th>Purpose</th>
-                            <th>Scheduled Time</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
+
+            <div class="table-wrapper">
+                <table class="table" id="main-table">
+                    <thead id="table-head">
+                        <!-- Dynamic Header -->
                     </thead>
-                    <tbody id="permits-table-body">
+                    <tbody id="table-body">
                         <tr>
-                            <td colspan="6" class="text-center">Loading...</td>
+                            <td colspan="6" class="text-center p-4">Loading...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -55,90 +91,130 @@
         </div>
     </div>
 
-    <script src="/js/api.js"></script>
-    <script>
-        Auth.checkAuth();
-        const user = Auth.getUser();
-        
-        // Display user info
-        document.getElementById('user-info').textContent = 
-            `${user.fullName} (${user.role})`;
-        
-        // Load dashboard data
-        async function loadDashboard() {
-            try {
-                UI.showLoading(true);
-                
-                // Get all permits
-                const permits = await Permits.getAll();
-                
-                // Calculate stats
-                const stats = {
-                    total: permits.length,
-                    pending: permits.filter(p => p.status.includes('PENDING')).length,
-                    approved: permits.filter(p => p.status === 'APPROVED').length,
-                    active: permits.filter(p => p.status === 'ACTIVE').length
-                };
-                
-                // Display stats
-                const statsContainer = document.getElementById('stats-container');
-                statsContainer.innerHTML = `
-                    <div class="stat-card">
-                        <div class="stat-value">${stats.total}</div>
-                        <div class="stat-label">Total Permits</div>
+    <!-- Create Permit Modal -->
+    <div id="create-modal" class="modal">
+        <div class="modal-content" style="max-width: 750px;">
+            <div class="modal-header">
+                <h3>New Working Permit</h3>
+                <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+            </div>
+            <form id="create-permit-form" class="p-2">
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="form-group">
+                        <label class="form-label font-bold">Data Center <span class="text-danger">*</span></label>
+                        <select id="dataCenter" class="form-select" required>
+                            <option value="">Select DC Location...</option>
+                            <option value="DC1">Jakarta DC 1</option>
+                            <option value="DC2">Surabaya DC 1</option>
+                            <option value="DC3">Bandung DC 1</option>
+                        </select>
                     </div>
-                    <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-                        <div class="stat-value">${stats.pending}</div>
-                        <div class="stat-label">Pending</div>
+                    <div class="form-group">
+                        <label class="form-label font-bold">Visit Type <span class="text-danger">*</span></label>
+                        <select id="visitType" class="form-select" required>
+                            <option value="">Select Type...</option>
+                            <option value="PREVENTIVE_MAINTENANCE">Preventive Maintenance</option>
+                            <option value="ASSESSMENT">Assessment</option>
+                            <option value="TROUBLESHOOT">Troubleshoot</option>
+                            <option value="CABLE_PULLING">Cable Pulling</option>
+                            <option value="AUDIT">Audit</option>
+                            <option value="INSTALLATION">Installation</option>
+                            <option value="VISIT">Regular Visit/Meeting</option>
+                        </select>
                     </div>
-                    <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #059669);">
-                        <div class="stat-value">${stats.approved}</div>
-                        <div class="stat-label">Approved</div>
+                </div>
+
+                <div class="form-group mb-4">
+                    <label class="form-label font-bold">Visit Purpose <span class="text-danger">*</span></label>
+                    <input type="text" id="visitPurpose" class="form-control" required
+                        placeholder="Briefly describe the purpose of your visit">
+                </div>
+
+                <div class="form-group mb-4">
+                    <label class="form-label font-bold">Person In Charge (PIC) <span
+                            class="text-danger">*</span></label>
+                    <select id="picSelect" class="form-select" required>
+                        <option value="">Loading PIC list...</option>
+                    </select>
+                    <small class="text-muted">Select the internal staff accompanying you.</small>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4 bg-gray-50 p-3 rounded border">
+                    <div class="form-group mb-0">
+                        <label class="form-label font-bold">Start Time <span class="text-danger">*</span></label>
+                        <input type="datetime-local" id="startTime" class="form-control" required>
+                        <small class="text-xs text-info">Must be in the future</small>
                     </div>
-                    <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
-                        <div class="stat-value">${stats.active}</div>
-                        <div class="stat-label">Active</div>
+                    <div class="form-group mb-0">
+                        <label class="form-label font-bold">End Time <span class="text-danger">*</span></label>
+                        <input type="datetime-local" id="endTime" class="form-control" required>
                     </div>
-                `;
-                
-                // Display recent permits (last 10)
-                const recentPermits = permits.slice(-10).reverse();
-                const tbody = document.getElementById('permits-table-body');
-                
-                if (recentPermits.length === 0) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="6" class="text-center">No permits found</td>
-                        </tr>
-                    `;
-                } else {
-                    tbody.innerHTML = recentPermits.map(permit => `
-                        <tr>
-                            <td>${permit.permitNumber}</td>
-                            <td>${permit.visitor.fullName}</td>
-                            <td>${permit.visitPurpose}</td>
-                            <td>${UI.formatDate(permit.scheduledStartTime)}</td>
-                            <td>
-                                <span class="badge ${UI.getStatusBadge(permit.status)}">
-                                    ${permit.status}
-                                </span>
-                            </td>
-                            <td>
-                                <a href="/permit-detail.html?id=${permit.id}" class="btn btn-sm btn-primary">
-                                    View
-                                </a>
-                            </td>
-                        </tr>
-                    `).join('');
-                }
-            } catch (error) {
-                UI.showAlert('Error loading dashboard: ' + error.message, 'error');
-            } finally {
-                UI.showLoading(false);
-            }
-        }
-        
-        loadDashboard();
-    </script>
+                </div>
+
+                <div class="form-group mb-6">
+                    <label class="form-label font-bold">Equipment List</label>
+                    <textarea id="equipmentList" class="form-control" rows="3"
+                        placeholder="Enter each item on a new line (e.g.&#10;Laptop MacBook Pro&#10;Fluke Network Tester)"></textarea>
+                    <small class="text-muted">List all devices you are bringing into the secure area.</small>
+                </div>
+
+                <div class="d-flex justify-end gap-2 pt-4 border-t">
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-6">Submit Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Permit Details Modal -->
+    <div id="detail-modal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3>Permit Details</h3>
+                <button class="modal-close"
+                    onclick="document.getElementById('detail-modal').classList.remove('show')">&times;</button>
+            </div>
+            <div id="detail-content">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>My Profile</h3>
+                <button class="modal-close"
+                    onclick="document.getElementById('profile-modal').classList.remove('show')">&times;</button>
+            </div>
+            <div id="profile-content">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" id="profile-username" class="form-control" disabled>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" id="profile-fullname" class="form-control" disabled>
+                </div>
+                <!-- Add more editable fields if implemented -->
+                <p class="text-sm text-muted">To update your profile details, please contact Admin.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js?v=12"></script>
+    <script src="/js/utils.js?v=12"></script>
+    <script src="/js/services.js?v=12"></script>
+
+    <!-- Role Dashboards -->
+    <script src="/js/roles/visitor.js?v=12"></script>
+    <script src="/js/roles/pic.js?v=12"></script>
+    <script src="/js/roles/manager.js?v=12"></script>
+    <script src="/js/roles/security.js?v=12"></script>
+
+    <script src="/js/dashboard.js?v=12"></script>
 </body>
+
 </html>

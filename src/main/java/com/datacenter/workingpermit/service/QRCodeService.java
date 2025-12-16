@@ -68,6 +68,9 @@ public class QRCodeService {
 
         String filePath = "uploads/qrcodes/" + fileName + ".png";
         Path path = FileSystems.getDefault().getPath(filePath);
+        if (path.getParent() != null) {
+            java.nio.file.Files.createDirectories(path.getParent());
+        }
         MatrixToImageWriter.writeToPath(bitMatrix, "PNG", path);
 
         return filePath;

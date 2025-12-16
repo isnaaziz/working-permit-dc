@@ -24,10 +24,12 @@ public class WorkingPermit {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "visitor_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private User visitor; // Pengunjung yang mengajukan
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pic_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private User pic; // Person In Charge internal
 
     @Column(nullable = false)
@@ -73,9 +75,11 @@ public class WorkingPermit {
     private String rejectionReason; // Alasan jika ditolak
 
     @OneToMany(mappedBy = "workingPermit", cascade = CascadeType.ALL, orphanRemoval = true)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Approval> approvals = new ArrayList<>();
 
     @OneToMany(mappedBy = "workingPermit", cascade = CascadeType.ALL, orphanRemoval = true)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<AccessLog> accessLogs = new ArrayList<>();
 
     private LocalDateTime createdAt;

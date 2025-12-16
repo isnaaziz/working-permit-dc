@@ -22,7 +22,6 @@ public class WorkingPermitRequest {
     private Long picId;
 
     @NotNull(message = "Scheduled start time is required")
-    @Future(message = "Scheduled start time must be in the future")
     private LocalDateTime scheduledStartTime;
 
     @NotNull(message = "Scheduled end time is required")
@@ -31,5 +30,5 @@ public class WorkingPermitRequest {
 
     private List<String> equipmentList;
 
-    private String workOrderDocument; // File path setelah upload
+    private String workOrderDocument;
 }

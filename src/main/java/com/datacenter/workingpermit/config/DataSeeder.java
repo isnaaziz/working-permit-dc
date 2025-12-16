@@ -23,7 +23,7 @@ public class DataSeeder implements CommandLineRunner {
     private final WorkingPermitRepository permitRepository;
     private final ApprovalRepository approvalRepository;
     private final PasswordEncoder passwordEncoder;
-    
+
     private final AtomicInteger permitCounter = new AtomicInteger(1);
 
     @Override
@@ -38,44 +38,45 @@ public class DataSeeder implements CommandLineRunner {
         log.info("Starting database seeding...");
 
         // Create Users
-        User visitor1 = createUser("visitor1", "Visitor One", "visitor1@example.com", 
-            "081234567890", "PT Visitor Corp", "3201234567890123", User.UserRole.VISITOR);
-        
-        User visitor2 = createUser("puspaaaa", "Puspa Indah", "puspa@example.com", 
-            "081234567891", "PT Digital Solutions", "3201234567890124", User.UserRole.VISITOR);
-        
-        User pic1 = createUser("pic1", "John Doe (PIC)", "pic1@datacenter.com", 
-            "081234567892", "Data Center Corp", "3201234567890125", User.UserRole.PIC);
-        
-        User pic2 = createUser("pic2", "Jane Smith (PIC)", "pic2@datacenter.com", 
-            "081234567893", "Data Center Corp", "3201234567890126", User.UserRole.PIC);
-        
-        User manager1 = createUser("manager1", "Manager One", "manager1@datacenter.com", 
-            "081234567894", "Data Center Corp", "3201234567890127", User.UserRole.MANAGER);
-        
-        User security1 = createUser("security1", "Security Guard", "security1@datacenter.com", 
-            "081234567895", "Data Center Corp", "3201234567890128", User.UserRole.SECURITY);
-        
-        User admin1 = createUser("admin", "System Admin", "admin@datacenter.com", 
-            "081234567896", "Data Center Corp", "3201234567890129", User.UserRole.ADMIN);
+        User visitor1 = createUser("visitor1", "Visitor One", "visitor1@example.com",
+                "081234567890", "PT Visitor Corp", "3201234567890123", User.UserRole.VISITOR);
+
+        User visitor2 = createUser("puspaaaa", "Puspa Indah", "puspa@example.com",
+                "081234567891", "PT Digital Solutions", "3201234567890124", User.UserRole.VISITOR);
+
+        User pic1 = createUser("pic1", "John Doe (PIC)", "pic1@datacenter.com",
+                "081234567892", "Data Center Corp", "3201234567890125", User.UserRole.PIC);
+
+        User pic2 = createUser("pic2", "Jane Smith (PIC)", "pic2@datacenter.com",
+                "081234567893", "Data Center Corp", "3201234567890126", User.UserRole.PIC);
+
+        User manager1 = createUser("manager1", "Manager One", "manager1@datacenter.com",
+                "081234567894", "Data Center Corp", "3201234567890127", User.UserRole.MANAGER);
+
+        createUser("security1", "Security Guard", "security1@datacenter.com",
+                "081234567895", "Data Center Corp", "3201234567890128", User.UserRole.SECURITY);
+
+        createUser("admin", "System Admin", "admin@datacenter.com",
+                "081234567896", "Data Center Corp", "3201234567890129", User.UserRole.ADMIN);
 
         log.info("Created {} users", userRepository.count());
 
         // Create Working Permits for puspaaaa (visitor2)
         createPermitsForVisitor(visitor2, pic1, manager1);
-        
+
         // Create Working Permits for visitor1
         createPermitsForVisitor(visitor1, pic2, manager1);
 
         log.info("Created {} working permits", permitRepository.count());
         log.info("Database seeding completed successfully!");
-        
+
         // Print test credentials
         printTestCredentials();
     }
 
-    private User createUser(String username, String fullName, String email, String phone, 
-                           String company, String idCardNumber, User.UserRole role) {
+    @SuppressWarnings("null")
+    private User createUser(String username, String fullName, String email, String phone,
+            String company, String idCardNumber, User.UserRole role) {
         User user = User.builder()
                 .username(username)
                 .password(passwordEncoder.encode("password123"))
@@ -90,15 +91,16 @@ public class DataSeeder implements CommandLineRunner {
                 .accountNonLocked(true)
                 .credentialsNonExpired(true)
                 .build();
-        
+
         return userRepository.save(user);
     }
-    
+
     private String generatePermitNumber() {
         String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         return String.format("WP-%s-%04d", today, permitCounter.getAndIncrement());
     }
 
+    @SuppressWarnings("null")
     private void createPermitsForVisitor(User visitor, User pic, User manager) {
         // Permit 1: PENDING_PIC - Baru diajukan
         WorkingPermit permit1 = WorkingPermit.builder()
@@ -129,7 +131,7 @@ public class DataSeeder implements CommandLineRunner {
                 .status(WorkingPermit.PermitStatus.PENDING_MANAGER)
                 .build();
         permitRepository.save(permit2);
-        
+
         // Create PIC approval (approved)
         Approval picApproval = Approval.builder()
                 .workingPermit(permit2)
@@ -140,7 +142,7 @@ public class DataSeeder implements CommandLineRunner {
                 .reviewedAt(LocalDateTime.now().minusHours(2))
                 .build();
         approvalRepository.save(picApproval);
-        
+
         // Create Manager approval (pending)
         Approval managerApproval = Approval.builder()
                 .workingPermit(permit2)
@@ -218,7 +220,7 @@ public class DataSeeder implements CommandLineRunner {
                 .rejectionReason("Unauthorized test not allowed")
                 .build();
         permitRepository.save(permit6);
-        
+
         // Create rejection approval
         Approval rejection = Approval.builder()
                 .workingPermit(permit6)

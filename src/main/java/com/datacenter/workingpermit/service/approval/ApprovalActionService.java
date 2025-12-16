@@ -1,4 +1,4 @@
-package com.datacenter.workingpermit.service;
+package com.datacenter.workingpermit.service.approval;
 
 import com.datacenter.workingpermit.dto.ApprovalRequest;
 import com.datacenter.workingpermit.model.Approval;
@@ -7,6 +7,8 @@ import com.datacenter.workingpermit.model.WorkingPermit;
 import com.datacenter.workingpermit.repository.ApprovalRepository;
 import com.datacenter.workingpermit.repository.UserRepository;
 import com.datacenter.workingpermit.repository.WorkingPermitRepository;
+import com.datacenter.workingpermit.service.notification.NotificationEventService;
+import com.datacenter.workingpermit.service.permit.PermitActionService;
 import com.google.zxing.WriterException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,19 +22,21 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ApprovalService {
+public class ApprovalActionService {
 
     private final ApprovalRepository approvalRepository;
     private final WorkingPermitRepository permitRepository;
     private final UserRepository userRepository;
-    private final WorkingPermitService workingPermitService;
-    private final NotificationService notificationService;
+    private final PermitActionService permitActionService;
+    private final NotificationEventService notificationService;
 
     /**
      * PIC Review - First level approval
      */
     @Transactional
     public void picReview(Long permitId, User pic, ApprovalRequest request) {
+        if (permitId == null)
+            throw new IllegalArgumentException("Permit ID cannot be null");
         WorkingPermit permit = permitRepository.findById(permitId)
                 .orElseThrow(() -> new RuntimeException("Permit not found"));
 
@@ -90,6 +94,8 @@ public class ApprovalService {
     @Transactional
     public void managerApproval(Long permitId, User manager, ApprovalRequest request)
             throws WriterException, IOException {
+        if (permitId == null)
+            throw new IllegalArgumentException("Permit ID cannot be null");
         WorkingPermit permit = permitRepository.findById(permitId)
                 .orElseThrow(() -> new RuntimeException("Permit not found"));
 
@@ -113,7 +119,7 @@ public class ApprovalService {
             approvalRepository.save(approval);
 
             // Approve permit (will generate QR and OTP)
-            workingPermitService.approvePermit(permitId);
+            permitActionService.approvePermit(permitId);
         } else {
             // Reject
             approval.setStatus(Approval.ApprovalStatus.REJECTED);
@@ -126,76 +132,5 @@ public class ApprovalService {
             // Notify visitor
             notificationService.notifyPermitRejected(permit, request.getComments());
         }
-    }
-
-    /**
-     * Get pending approvals for PIC
-     */
-    public List<Approval> getPendingApprovalsForPIC(User pic) {
-        return approvalRepository.findByApproverIdAndStatus(
-                pic.getId(),
-                Approval.ApprovalStatus.PENDING);
-    }
-
-    /**
-     * Get pending approvals for Manager
-     */
-    public List<Approval> getPendingApprovalsForManager(User manager) {
-        return approvalRepository.findByApproverIdAndStatus(
-                manager.getId(),
-                Approval.ApprovalStatus.PENDING);
-    }
-
-    /**
-     * Get all approvals for a permit
-     */
-    public List<Approval> getApprovalsForPermit(Long permitId) {
-        WorkingPermit permit = permitRepository.findById(permitId)
-                .orElseThrow(() -> new RuntimeException("Permit not found"));
-        return approvalRepository.findByWorkingPermit(permit);
-    }
-
-    /**
-     * Get all pending approvals
-     */
-    public List<Approval> getAllPendingApprovals() {
-        return approvalRepository.findByStatus(Approval.ApprovalStatus.PENDING);
-    }
-
-    /**
-     * Get pending PIC approvals
-     */
-    public List<Approval> getPendingPICApprovals(Long picId) {
-        return approvalRepository.findByApproverIdAndStatus(picId, Approval.ApprovalStatus.PENDING)
-                .stream()
-                .filter(a -> a.getLevel() == Approval.ApprovalLevel.PIC_REVIEW)
-                .toList();
-    }
-
-    /**
-     * Get pending Manager approvals
-     */
-    public List<Approval> getPendingManagerApprovals(Long managerId) {
-        return approvalRepository.findByApproverIdAndStatus(managerId, Approval.ApprovalStatus.PENDING)
-                .stream()
-                .filter(a -> a.getLevel() == Approval.ApprovalLevel.MANAGER_APPROVAL)
-                .toList();
-    }
-
-    /**
-     * Get approvals by permit ID
-     */
-    public List<Approval> getApprovalsByPermit(Long permitId) {
-        WorkingPermit permit = permitRepository.findById(permitId)
-                .orElseThrow(() -> new RuntimeException("Permit not found"));
-        return approvalRepository.findByWorkingPermit(permit);
-    }
-
-    /**
-     * Get approval by ID
-     */
-    public Approval getApprovalById(Long approvalId) {
-        return approvalRepository.findById(approvalId)
-                .orElseThrow(() -> new RuntimeException("Approval not found with id: " + approvalId));
     }
 }

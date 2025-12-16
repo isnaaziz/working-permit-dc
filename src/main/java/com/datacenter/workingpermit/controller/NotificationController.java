@@ -1,7 +1,7 @@
 package com.datacenter.workingpermit.controller;
 
 import com.datacenter.workingpermit.model.Notification;
-import com.datacenter.workingpermit.service.NotificationService;
+import com.datacenter.workingpermit.service.notification.NotificationRetrievalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +20,7 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class NotificationController {
 
-    private final NotificationService notificationService;
+    private final NotificationRetrievalService notificationRetrievalService;
 
     /**
      * Get notifications for a user
@@ -28,7 +28,7 @@ public class NotificationController {
      */
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<Notification>> getUserNotifications(@PathVariable Long userId) {
-        List<Notification> notifications = notificationService.getNotificationsByUser(userId);
+        List<Notification> notifications = notificationRetrievalService.getNotificationsByUser(userId);
         return ResponseEntity.ok(notifications);
     }
 
@@ -38,7 +38,7 @@ public class NotificationController {
      */
     @GetMapping("/user/{userId}/unread")
     public ResponseEntity<List<Notification>> getUnreadNotifications(@PathVariable Long userId) {
-        List<Notification> notifications = notificationService.getUnreadNotifications(userId);
+        List<Notification> notifications = notificationRetrievalService.getUnreadNotifications(userId);
         return ResponseEntity.ok(notifications);
     }
 
@@ -48,7 +48,7 @@ public class NotificationController {
      */
     @PostMapping("/{id}/read")
     public ResponseEntity<Map<String, Object>> markAsRead(@PathVariable Long id) {
-        notificationService.markAsRead(id);
+        notificationRetrievalService.markAsRead(id);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -63,8 +63,8 @@ public class NotificationController {
      */
     @PostMapping("/user/{userId}/read-all")
     public ResponseEntity<Map<String, Object>> markAllAsRead(@PathVariable Long userId) {
-        List<Notification> notifications = notificationService.getUnreadNotifications(userId);
-        notifications.forEach(n -> notificationService.markAsRead(n.getId()));
+        List<Notification> notifications = notificationRetrievalService.getUnreadNotifications(userId);
+        notifications.forEach(n -> notificationRetrievalService.markAsRead(n.getId()));
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -79,7 +79,7 @@ public class NotificationController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Notification> getNotification(@PathVariable Long id) {
-        Notification notification = notificationService.getNotificationById(id);
+        Notification notification = notificationRetrievalService.getNotificationById(id);
         return ResponseEntity.ok(notification);
     }
 }

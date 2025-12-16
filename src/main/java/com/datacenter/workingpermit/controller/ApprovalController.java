@@ -3,7 +3,8 @@ package com.datacenter.workingpermit.controller;
 import com.datacenter.workingpermit.dto.ApprovalRequest;
 import com.datacenter.workingpermit.model.Approval;
 import com.datacenter.workingpermit.model.User;
-import com.datacenter.workingpermit.service.ApprovalService;
+import com.datacenter.workingpermit.service.approval.ApprovalActionService;
+import com.datacenter.workingpermit.service.approval.ApprovalRetrievalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,8 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class ApprovalController {
 
-    private final ApprovalService approvalService;
+    private final ApprovalActionService approvalActionService;
+    private final ApprovalRetrievalService approvalRetrievalService;
 
     /**
      * PIC Review - Approve or reject permit
@@ -37,7 +39,7 @@ public class ApprovalController {
         User pic = new User(); // Mock - in real implementation get from authentication
         pic.setId(picId);
 
-        approvalService.picReview(request.getPermitId(), pic, request);
+        approvalActionService.picReview(request.getPermitId(), pic, request);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -60,7 +62,7 @@ public class ApprovalController {
         User manager = new User(); // Mock - in real implementation get from authentication
         manager.setId(managerId);
 
-        approvalService.managerApproval(request.getPermitId(), manager, request);
+        approvalActionService.managerApproval(request.getPermitId(), manager, request);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -77,7 +79,7 @@ public class ApprovalController {
      */
     @GetMapping("/pic/{picId}/pending")
     public ResponseEntity<List<Approval>> getPICPendingApprovals(@PathVariable Long picId) {
-        List<Approval> approvals = approvalService.getPendingPICApprovals(picId);
+        List<Approval> approvals = approvalRetrievalService.getPendingPICApprovals(picId);
         return ResponseEntity.ok(approvals);
     }
 
@@ -87,7 +89,7 @@ public class ApprovalController {
      */
     @GetMapping("/manager/{managerId}/pending")
     public ResponseEntity<List<Approval>> getManagerPendingApprovals(@PathVariable Long managerId) {
-        List<Approval> approvals = approvalService.getPendingManagerApprovals(managerId);
+        List<Approval> approvals = approvalRetrievalService.getPendingManagerApprovals(managerId);
         return ResponseEntity.ok(approvals);
     }
 
@@ -97,7 +99,7 @@ public class ApprovalController {
      */
     @GetMapping("/permit/{permitId}")
     public ResponseEntity<List<Approval>> getPermitApprovals(@PathVariable Long permitId) {
-        List<Approval> approvals = approvalService.getApprovalsByPermit(permitId);
+        List<Approval> approvals = approvalRetrievalService.getApprovalsByPermit(permitId);
         return ResponseEntity.ok(approvals);
     }
 
@@ -107,7 +109,7 @@ public class ApprovalController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Approval> getApproval(@PathVariable Long id) {
-        Approval approval = approvalService.getApprovalById(id);
+        Approval approval = approvalRetrievalService.getApprovalById(id);
         return ResponseEntity.ok(approval);
     }
 }

@@ -3,7 +3,9 @@ package com.datacenter.workingpermit.controller;
 import com.datacenter.workingpermit.dto.WorkingPermitRequest;
 import com.datacenter.workingpermit.exception.ResourceNotFoundException;
 import com.datacenter.workingpermit.model.WorkingPermit;
-import com.datacenter.workingpermit.service.WorkingPermitService;
+import com.datacenter.workingpermit.service.permit.PermitActionService;
+import com.datacenter.workingpermit.service.permit.PermitCreationService;
+import com.datacenter.workingpermit.service.permit.PermitRetrievalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +23,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class WorkingPermitController {
 
-    private final WorkingPermitService permitService;
+    private final PermitCreationService permitCreationService;
+    private final PermitRetrievalService permitRetrievalService;
+    private final PermitActionService permitActionService;
 
     /**
      * Create new working permit
@@ -32,7 +36,7 @@ public class WorkingPermitController {
             @Valid @RequestBody WorkingPermitRequest request,
             @RequestParam Long visitorId) {
 
-        WorkingPermit permit = permitService.createPermit(visitorId, request);
+        WorkingPermit permit = permitCreationService.createPermit(visitorId, request);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -50,7 +54,7 @@ public class WorkingPermitController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<WorkingPermit> getPermit(@PathVariable Long id) {
-        WorkingPermit permit = permitService.getPermitById(id)
+        WorkingPermit permit = permitRetrievalService.getPermitById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Permit not found"));
         return ResponseEntity.ok(permit);
     }
@@ -61,7 +65,7 @@ public class WorkingPermitController {
      */
     @GetMapping("/number/{permitNumber}")
     public ResponseEntity<WorkingPermit> getPermitByNumber(@PathVariable String permitNumber) {
-        WorkingPermit permit = permitService.getPermitByNumber(permitNumber)
+        WorkingPermit permit = permitRetrievalService.getPermitByNumber(permitNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Permit not found"));
         return ResponseEntity.ok(permit);
     }
@@ -72,7 +76,7 @@ public class WorkingPermitController {
      */
     @GetMapping("/visitor/{visitorId}")
     public ResponseEntity<List<WorkingPermit>> getPermitsByVisitor(@PathVariable Long visitorId) {
-        List<WorkingPermit> permits = permitService.getPermitsByVisitorId(visitorId);
+        List<WorkingPermit> permits = permitRetrievalService.getPermitsByVisitorId(visitorId);
         return ResponseEntity.ok(permits);
     }
 
@@ -82,7 +86,7 @@ public class WorkingPermitController {
      */
     @GetMapping("/pic/{picId}")
     public ResponseEntity<List<WorkingPermit>> getPermitsByPIC(@PathVariable Long picId) {
-        List<WorkingPermit> permits = permitService.getPermitsByPICId(picId);
+        List<WorkingPermit> permits = permitRetrievalService.getPermitsByPICId(picId);
         return ResponseEntity.ok(permits);
     }
 
@@ -93,7 +97,7 @@ public class WorkingPermitController {
     @GetMapping("/status/{status}")
     public ResponseEntity<List<WorkingPermit>> getPermitsByStatus(@PathVariable String status) {
         WorkingPermit.PermitStatus permitStatus = WorkingPermit.PermitStatus.valueOf(status);
-        List<WorkingPermit> permits = permitService.getPermitsByStatus(permitStatus);
+        List<WorkingPermit> permits = permitRetrievalService.getPermitsByStatus(permitStatus);
         return ResponseEntity.ok(permits);
     }
 
@@ -103,7 +107,7 @@ public class WorkingPermitController {
      */
     @GetMapping
     public ResponseEntity<List<WorkingPermit>> getAllPermits() {
-        List<WorkingPermit> permits = permitService.getAllPermits();
+        List<WorkingPermit> permits = permitRetrievalService.getAllPermits();
         return ResponseEntity.ok(permits);
     }
 
@@ -116,7 +120,7 @@ public class WorkingPermitController {
             @PathVariable Long id,
             @Valid @RequestBody WorkingPermitRequest request) {
 
-        WorkingPermit permit = permitService.updatePermit(id, request);
+        WorkingPermit permit = permitCreationService.updatePermit(id, request);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -135,7 +139,7 @@ public class WorkingPermitController {
             @PathVariable Long id,
             @RequestParam(required = false) String reason) {
 
-        permitService.cancelPermit(id, reason);
+        permitActionService.cancelPermit(id, reason);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -150,7 +154,7 @@ public class WorkingPermitController {
      */
     @PostMapping("/{id}/activate")
     public ResponseEntity<Map<String, Object>> activatePermit(@PathVariable Long id) {
-        permitService.activatePermit(id);
+        permitActionService.activatePermit(id);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -165,7 +169,7 @@ public class WorkingPermitController {
      */
     @PostMapping("/{id}/regenerate-otp")
     public ResponseEntity<Map<String, Object>> regenerateOTP(@PathVariable Long id) {
-        String newOtp = permitService.regenerateOTP(id);
+        String newOtp = permitActionService.regenerateOTP(id);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);

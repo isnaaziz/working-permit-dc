@@ -4,7 +4,7 @@ import com.datacenter.workingpermit.dto.CheckInRequest;
 import com.datacenter.workingpermit.model.AccessLog;
 import com.datacenter.workingpermit.model.WorkingPermit;
 import com.datacenter.workingpermit.model.TempIdCard;
-import com.datacenter.workingpermit.service.AccessControlService;
+import com.datacenter.workingpermit.service.accesscontrol.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +24,10 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class AccessControlController {
 
-    private final AccessControlService accessControlService;
+    private final CheckInService checkInService;
+    private final CheckOutService checkOutService;
+    private final DoorAccessService doorAccessService;
+    private final AccessLogService accessLogService;
 
     /**
      * Verify access with QR Code and OTP
@@ -32,7 +35,7 @@ public class AccessControlController {
      */
     @PostMapping("/verify")
     public ResponseEntity<Map<String, Object>> verifyAccess(@Valid @RequestBody CheckInRequest request) {
-        WorkingPermit permit = accessControlService.verifyQRCodeAndOTP(
+        WorkingPermit permit = checkInService.verifyQRCodeAndOTP(
                 request.getQrCodeData(),
                 request.getOtpCode());
 
@@ -51,7 +54,7 @@ public class AccessControlController {
      */
     @PostMapping("/check-in")
     public ResponseEntity<Map<String, Object>> checkIn(@Valid @RequestBody CheckInRequest request) {
-        TempIdCard idCard = accessControlService.checkIn(request);
+        TempIdCard idCard = checkInService.checkIn(request);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -73,7 +76,7 @@ public class AccessControlController {
             @RequestParam Long permitId,
             @RequestParam(required = false, defaultValue = "Main Gate") String location) {
 
-        accessControlService.checkOut(permitId, location);
+        checkOutService.checkOut(permitId, location);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -92,7 +95,7 @@ public class AccessControlController {
             @RequestParam String location,
             @RequestParam(defaultValue = "ENTRY") String accessType) {
 
-        accessControlService.recordDoorAccess(rfidTag, location, accessType);
+        doorAccessService.recordDoorAccess(rfidTag, location, accessType);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -107,7 +110,7 @@ public class AccessControlController {
      */
     @GetMapping("/logs/permit/{permitId}")
     public ResponseEntity<List<AccessLog>> getPermitAccessLogs(@PathVariable Long permitId) {
-        List<AccessLog> logs = accessControlService.getAccessLogsByPermit(permitId);
+        List<AccessLog> logs = accessLogService.getAccessLogsByPermit(permitId);
         return ResponseEntity.ok(logs);
     }
 
@@ -117,7 +120,7 @@ public class AccessControlController {
      */
     @GetMapping("/logs/location/{location}")
     public ResponseEntity<List<AccessLog>> getLocationAccessLogs(@PathVariable String location) {
-        List<AccessLog> logs = accessControlService.getAccessLogsByLocation(location);
+        List<AccessLog> logs = accessLogService.getAccessLogsByLocation(location);
         return ResponseEntity.ok(logs);
     }
 
@@ -127,7 +130,7 @@ public class AccessControlController {
      */
     @GetMapping("/logs")
     public ResponseEntity<List<AccessLog>> getAllAccessLogs() {
-        List<AccessLog> logs = accessControlService.getAllAccessLogs();
+        List<AccessLog> logs = accessLogService.getAllAccessLogs();
         return ResponseEntity.ok(logs);
     }
 }

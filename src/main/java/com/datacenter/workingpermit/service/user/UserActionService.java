@@ -1,31 +1,19 @@
-package com.datacenter.workingpermit.service;
+package com.datacenter.workingpermit.service.user;
 
 import com.datacenter.workingpermit.dto.UserRegistrationRequest;
 import com.datacenter.workingpermit.model.User;
 import com.datacenter.workingpermit.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
-public class UserService implements UserDetailsService {
+public class UserActionService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-
-    @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-    }
 
     /**
      * Register new user from DTO
@@ -86,52 +74,12 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * Find user by ID
-     */
-    public Optional<User> findById(Long id) {
-        return userRepository.findById(id);
-    }
-
-    /**
-     * Find user by username
-     */
-    public Optional<User> findByUsername(String username) {
-        return userRepository.findByUsername(username);
-    }
-
-    /**
-     * Find user by email
-     */
-    public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
-    }
-
-    /**
-     * Get all users by role
-     */
-    public List<User> getUsersByRole(User.UserRole role) {
-        return userRepository.findByRole(role);
-    }
-
-    /**
-     * Get all PICs (Person In Charge)
-     */
-    public List<User> getAllPICs() {
-        return userRepository.findByRole(User.UserRole.PIC);
-    }
-
-    /**
-     * Get all Managers
-     */
-    public List<User> getAllManagers() {
-        return userRepository.findByRole(User.UserRole.MANAGER);
-    }
-
-    /**
      * Update user profile
      */
     @Transactional
     public User updateUser(Long userId, User updatedUser) {
+        if (userId == null)
+            throw new IllegalArgumentException("User ID cannot be null");
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -148,6 +96,8 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void changePassword(Long userId, String oldPassword, String newPassword) {
+        if (userId == null)
+            throw new IllegalArgumentException("User ID cannot be null");
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -164,6 +114,8 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void toggleUserStatus(Long userId, boolean enabled) {
+        if (userId == null)
+            throw new IllegalArgumentException("User ID cannot be null");
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -172,61 +124,12 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * Get all users
-     */
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
-    }
-
-    /**
      * Delete user
      */
     @Transactional
     public void deleteUser(Long userId) {
+        if (userId == null)
+            throw new IllegalArgumentException("User ID cannot be null");
         userRepository.deleteById(userId);
-    }
-
-    /**
-     * Get user by ID (throws exception if not found)
-     */
-    public User getUserById(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-    }
-
-    /**
-     * Get user by username (throws exception if not found)
-     */
-    public User getUserByUsername(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
-    }
-
-    /**
-     * Authenticate user
-     */
-    public User authenticate(String username, String password) {
-        User user = getUserByUsername(username);
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new RuntimeException("Invalid credentials");
-        }
-        if (!user.isEnabled()) {
-            throw new RuntimeException("User account is disabled");
-        }
-        return user;
-    }
-
-    /**
-     * Check if username exists
-     */
-    public boolean existsByUsername(String username) {
-        return userRepository.existsByUsername(username);
-    }
-
-    /**
-     * Check if email exists
-     */
-    public boolean existsByEmail(String email) {
-        return userRepository.existsByEmail(email);
     }
 }

@@ -1,130 +1,20 @@
-package com.datacenter.workingpermit.service;
+package com.datacenter.workingpermit.service.notification;
 
 import com.datacenter.workingpermit.model.Notification;
 import com.datacenter.workingpermit.model.User;
 import com.datacenter.workingpermit.model.WorkingPermit;
-import com.datacenter.workingpermit.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class NotificationService {
+public class NotificationEventService {
 
-    private final NotificationRepository notificationRepository;
-    private final JavaMailSender mailSender;
-
-    @Value("${spring.mail.username:noreply@datacenter.com}")
-    private String fromEmail;
-
-    @Value("${app.sms.enabled:false}")
-    private boolean smsEnabled;
-
-    /**
-     * Send notification
-     */
-    @Transactional
-    public void sendNotification(
-            User recipient,
-            WorkingPermit permit,
-            Notification.NotificationType type,
-            String subject,
-            String message,
-            Notification.DeliveryChannel channel) {
-        // Create notification record
-        Notification notification = Notification.builder()
-                .recipient(recipient)
-                .workingPermit(permit)
-                .type(type)
-                .subject(subject)
-                .message(message)
-                .channel(channel)
-                .status(Notification.DeliveryStatus.PENDING)
-                .build();
-
-        notificationRepository.save(notification);
-
-        // Send via appropriate channel
-        try {
-            switch (channel) {
-                case EMAIL:
-                    sendEmail(recipient.getEmail(), subject, message);
-                    break;
-                case SMS:
-                    sendSMS(recipient.getPhoneNumber(), message);
-                    break;
-                case ALL:
-                    sendEmail(recipient.getEmail(), subject, message);
-                    sendSMS(recipient.getPhoneNumber(), message);
-                    break;
-                case IN_APP:
-                    // In-app notification already saved in database
-                    break;
-            }
-
-            notification.setStatus(Notification.DeliveryStatus.SENT);
-            notification.setSentAt(LocalDateTime.now());
-            notificationRepository.save(notification);
-
-        } catch (Exception e) {
-            log.error("Failed to send notification: {}", e.getMessage());
-            notification.setStatus(Notification.DeliveryStatus.FAILED);
-            notificationRepository.save(notification);
-        }
-    }
-
-    /**
-     * Send email
-     */
-    private void sendEmail(String to, String subject, String message) {
-        try {
-            SimpleMailMessage mailMessage = new SimpleMailMessage();
-            mailMessage.setFrom(fromEmail);
-            mailMessage.setTo(to);
-            mailMessage.setSubject(subject);
-            mailMessage.setText(message);
-
-            mailSender.send(mailMessage);
-            log.info("Email sent to: {}", to);
-        } catch (Exception e) {
-            log.error("Failed to send email to {}: {}", to, e.getMessage());
-            throw e;
-        }
-    }
-
-    /**
-     * Send SMS (placeholder - integrate with Twilio or other SMS provider)
-     */
-    private void sendSMS(String phoneNumber, String message) {
-        if (!smsEnabled) {
-            log.info("SMS disabled. Would send to {}: {}", phoneNumber, message);
-            return;
-        }
-
-        try {
-            // TODO: Integrate with Twilio or other SMS provider
-            // Example Twilio integration:
-            // Message smsMessage = Message.creator(
-            // new PhoneNumber(phoneNumber),
-            // new PhoneNumber(twilioFromNumber),
-            // message
-            // ).create();
-
-            log.info("SMS sent to: {}", phoneNumber);
-        } catch (Exception e) {
-            log.error("Failed to send SMS to {}: {}", phoneNumber, e.getMessage());
-            throw e;
-        }
-    }
+    private final NotificationSenderService notificationSenderService;
 
     /**
      * Send permit submitted notification
@@ -142,7 +32,7 @@ public class NotificationService {
                 permit.getVisitPurpose(),
                 permit.getScheduledStartTime());
 
-        sendNotification(
+        notificationSenderService.sendNotification(
                 permit.getPic(),
                 permit,
                 Notification.NotificationType.PERMIT_SUBMITTED,
@@ -170,7 +60,7 @@ public class NotificationService {
                 permit.getScheduledEndTime(),
                 otp);
 
-        sendNotification(
+        notificationSenderService.sendNotification(
                 permit.getVisitor(),
                 permit,
                 Notification.NotificationType.PERMIT_APPROVED,
@@ -192,7 +82,7 @@ public class NotificationService {
                 permit.getPermitNumber(),
                 reason);
 
-        sendNotification(
+        notificationSenderService.sendNotification(
                 permit.getVisitor(),
                 permit,
                 Notification.NotificationType.PERMIT_REJECTED,
@@ -220,7 +110,7 @@ public class NotificationService {
                 permit.getVisitPurpose(),
                 permit.getScheduledStartTime());
 
-        sendNotification(
+        notificationSenderService.sendNotification(
                 approver,
                 permit,
                 Notification.NotificationType.APPROVAL_REQUIRED,
@@ -244,7 +134,7 @@ public class NotificationService {
                 LocalDateTime.now());
 
         // Notify PIC
-        sendNotification(
+        notificationSenderService.sendNotification(
                 permit.getPic(),
                 permit,
                 Notification.NotificationType.CHECK_IN_SUCCESS,
@@ -270,7 +160,7 @@ public class NotificationService {
                 permit.getActualCheckOutTime());
 
         // Notify visitor and PIC
-        sendNotification(
+        notificationSenderService.sendNotification(
                 permit.getVisitor(),
                 permit,
                 Notification.NotificationType.CHECK_OUT_SUCCESS,
@@ -278,60 +168,12 @@ public class NotificationService {
                 message,
                 Notification.DeliveryChannel.EMAIL);
 
-        sendNotification(
+        notificationSenderService.sendNotification(
                 permit.getPic(),
                 permit,
                 Notification.NotificationType.CHECK_OUT_SUCCESS,
                 subject,
                 message,
                 Notification.DeliveryChannel.EMAIL);
-    }
-
-    /**
-     * Get unread notifications for user
-     */
-    public List<Notification> getUnreadNotifications(Long userId) {
-        return notificationRepository.findByRecipientIdAndIsReadOrderByCreatedAtDesc(userId, false);
-    }
-
-    /**
-     * Get all notifications for user
-     */
-    public List<Notification> getAllNotifications(Long userId) {
-        return notificationRepository.findByRecipientIdOrderByCreatedAtDesc(userId);
-    }
-
-    /**
-     * Mark notification as read
-     */
-    @Transactional
-    public void markAsRead(Long notificationId) {
-        notificationRepository.findById(notificationId).ifPresent(notification -> {
-            notification.setIsRead(true);
-            notification.setReadAt(LocalDateTime.now());
-            notificationRepository.save(notification);
-        });
-    }
-
-    /**
-     * Get unread count
-     */
-    public long getUnreadCount(Long userId) {
-        return notificationRepository.countByRecipientIdAndIsRead(userId, false);
-    }
-
-    /**
-     * Get notifications by user ID
-     */
-    public List<Notification> getNotificationsByUser(Long userId) {
-        return notificationRepository.findByRecipientIdOrderByCreatedAtDesc(userId);
-    }
-
-    /**
-     * Get notification by ID
-     */
-    public Notification getNotificationById(Long notificationId) {
-        return notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new RuntimeException("Notification not found with id: " + notificationId));
     }
 }

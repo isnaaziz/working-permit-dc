@@ -19,10 +19,12 @@ public class AccessLog {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "permit_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private WorkingPermit workingPermit;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private User user; // Visitor yang melakukan akses
 
     @Enumerated(EnumType.STRING)

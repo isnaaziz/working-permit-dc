@@ -3,7 +3,9 @@ package com.datacenter.workingpermit.controller;
 import com.datacenter.workingpermit.dto.UserRegistrationRequest;
 import com.datacenter.workingpermit.model.User;
 import com.datacenter.workingpermit.security.JwtTokenProvider;
-import com.datacenter.workingpermit.service.UserService;
+import com.datacenter.workingpermit.service.user.UserActionService;
+import com.datacenter.workingpermit.service.user.UserAuthService;
+import com.datacenter.workingpermit.service.user.UserRetrievalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,13 +25,15 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class AuthController {
 
-    private final UserService userService;
+    private final UserRetrievalService userRetrievalService;
+    private final UserActionService userActionService;
+    private final UserAuthService userAuthService;
     private final JwtTokenProvider tokenProvider;
     private final AuthenticationManager authenticationManager;
 
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody UserRegistrationRequest request) {
-        User user = userService.registerUser(request);
+        User user = userActionService.registerUser(request);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -48,11 +52,10 @@ public class AuthController {
 
         // Authenticate user
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(username, password)
-        );
+                new UsernamePasswordAuthenticationToken(username, password));
 
         // Get user details
-        User user = userService.authenticate(username, password);
+        User user = userAuthService.authenticate(username, password);
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
         // Generate JWT tokens
@@ -63,7 +66,7 @@ public class AuthController {
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("message", "Login successful");
-        
+
         // User info
         response.put("userId", user.getId());
         response.put("username", user.getUsername());
@@ -72,7 +75,7 @@ public class AuthController {
         response.put("role", user.getRole().name());
         response.put("company", user.getCompany());
         response.put("phoneNumber", user.getPhoneNumber());
-        
+
         // JWT tokens
         response.put("accessToken", accessToken);
         response.put("refreshToken", refreshToken);
@@ -88,7 +91,7 @@ public class AuthController {
 
         if (refreshToken != null && tokenProvider.validateToken(refreshToken)) {
             String username = tokenProvider.getUsernameFromToken(refreshToken);
-            UserDetails userDetails = userService.loadUserByUsername(username);
+            UserDetails userDetails = userRetrievalService.loadUserByUsername(username);
 
             String newAccessToken = tokenProvider.generateToken(userDetails);
             Date expiresAt = tokenProvider.getExpirationFromToken(newAccessToken);
@@ -119,7 +122,7 @@ public class AuthController {
         if (valid) {
             String username = tokenProvider.getUsernameFromToken(token);
             Date expiration = tokenProvider.getExpirationFromToken(token);
-            
+
             response.put("username", username);
             response.put("expiresAt", expiration.getTime());
         }
@@ -129,7 +132,7 @@ public class AuthController {
 
     @GetMapping("/check-username")
     public ResponseEntity<Map<String, Boolean>> checkUsername(@RequestParam String username) {
-        boolean exists = userService.existsByUsername(username);
+        boolean exists = userRetrievalService.existsByUsername(username);
 
         Map<String, Boolean> response = new HashMap<>();
         response.put("exists", exists);
@@ -139,7 +142,7 @@ public class AuthController {
 
     @GetMapping("/check-email")
     public ResponseEntity<Map<String, Boolean>> checkEmail(@RequestParam String email) {
-        boolean exists = userService.existsByEmail(email);
+        boolean exists = userRetrievalService.existsByEmail(email);
 
         Map<String, Boolean> response = new HashMap<>();
         response.put("exists", exists);
