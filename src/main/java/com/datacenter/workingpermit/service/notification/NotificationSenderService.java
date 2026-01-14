@@ -7,7 +7,7 @@ import com.datacenter.workingpermit.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
+
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +33,7 @@ public class NotificationSenderService {
      */
     @org.springframework.scheduling.annotation.Async
     @Transactional
-    @SuppressWarnings("null")
+
     public void sendNotification(
             User recipient,
             WorkingPermit permit,
@@ -41,6 +41,24 @@ public class NotificationSenderService {
             String subject,
             String message,
             Notification.DeliveryChannel channel) {
+        sendNotification(recipient, permit, type, subject, message, channel, null);
+    }
+
+    /**
+     * Send notification with attachment
+     */
+    @org.springframework.scheduling.annotation.Async
+    @Transactional
+
+    public void sendNotification(
+            User recipient,
+            WorkingPermit permit,
+            Notification.NotificationType type,
+            String subject,
+            String message,
+            Notification.DeliveryChannel channel,
+            String attachmentPath) {
+
         // Create notification record
         Notification notification = Notification.builder()
                 .recipient(recipient)
@@ -58,13 +76,13 @@ public class NotificationSenderService {
         try {
             switch (channel) {
                 case EMAIL:
-                    sendEmail(recipient.getEmail(), subject, message);
+                    sendEmail(recipient.getEmail(), subject, message, attachmentPath);
                     break;
                 case SMS:
                     sendSMS(recipient.getPhoneNumber(), message);
                     break;
                 case ALL:
-                    sendEmail(recipient.getEmail(), subject, message);
+                    sendEmail(recipient.getEmail(), subject, message, attachmentPath);
                     sendSMS(recipient.getPhoneNumber(), message);
                     break;
                 case IN_APP:
@@ -86,19 +104,31 @@ public class NotificationSenderService {
     /**
      * Send email
      */
-    private void sendEmail(String to, String subject, String message) {
+    private void sendEmail(String to, String subject, String message, String attachmentPath) {
         try {
-            SimpleMailMessage mailMessage = new SimpleMailMessage();
-            mailMessage.setFrom(fromEmail);
-            mailMessage.setTo(to);
-            mailMessage.setSubject(subject);
-            mailMessage.setText(message);
+            jakarta.mail.internet.MimeMessage mimeMessage = mailSender.createMimeMessage();
+            org.springframework.mail.javamail.MimeMessageHelper helper = new org.springframework.mail.javamail.MimeMessageHelper(
+                    mimeMessage, true, "UTF-8");
 
-            mailSender.send(mailMessage);
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(message);
+
+            if (attachmentPath != null && !attachmentPath.isEmpty()) {
+                java.io.File file = new java.io.File(attachmentPath);
+                if (file.exists()) {
+                    helper.addAttachment(file.getName(), file);
+                } else {
+                    log.warn("Attachment file not found: {}", attachmentPath);
+                }
+            }
+
+            mailSender.send(mimeMessage);
             log.info("Email sent to: {}", to);
         } catch (Exception e) {
             log.error("Failed to send email to {}: {}", to, e.getMessage());
-            throw e;
+            throw new RuntimeException("Failed to send email", e);
         }
     }
 

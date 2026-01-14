@@ -18,6 +18,7 @@ public class PermitRetrievalService {
 
     private final WorkingPermitRepository permitRepository;
     private final UserRepository userRepository;
+    private final com.datacenter.workingpermit.service.QRCodeService qrCodeService;
 
     /**
      * Get permit by ID
@@ -25,7 +26,24 @@ public class PermitRetrievalService {
     public Optional<WorkingPermit> getPermitById(Long id) {
         if (id == null)
             return Optional.empty();
-        return permitRepository.findById(id);
+
+        Optional<WorkingPermit> permitOpt = permitRepository.findById(id);
+
+        if (permitOpt.isPresent()) {
+            WorkingPermit permit = permitOpt.get();
+            // Populate Base64 QR Code if data exists
+            if (permit.getQrCodeData() != null) {
+                try {
+                    String base64 = qrCodeService.generateQRCodeBase64(permit.getQrCodeData());
+                    permit.setQrCodeBase64(base64);
+                } catch (Exception e) {
+                    log.error("Failed to generate QR code Base64 for permit {}: {}", id, e.getMessage());
+                }
+            }
+            return Optional.of(permit);
+        }
+
+        return Optional.empty();
     }
 
     /**

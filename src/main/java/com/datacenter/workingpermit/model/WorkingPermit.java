@@ -63,6 +63,9 @@ public class WorkingPermit {
 
     private String qrCodeData; // Data unik untuk QR code
 
+    @Transient
+    private String qrCodeBase64; // Base64 image data for frontend display
+
     private String qrCodeImagePath; // Path ke file QR code image
 
     private String otpCode; // Kode 2FA sementara

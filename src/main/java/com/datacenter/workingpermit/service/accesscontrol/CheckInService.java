@@ -31,16 +31,25 @@ public class CheckInService {
     /**
      * Check-in visitor with QR code and OTP
      */
+    /**
+     * Check-in visitor with QR code and OTP
+     */
     @Transactional
     public TempIdCard checkIn(CheckInRequest request) {
-        // Validate QR code
-        if (!qrCodeService.isValidQRCodeData(request.getQrCodeData())) {
-            throw new RuntimeException("Invalid QR code");
-        }
+        WorkingPermit permit;
+        String inputData = request.getQrCodeData();
 
-        // Find permit by QR code
-        WorkingPermit permit = permitRepository.findByQrCodeData(request.getQrCodeData())
-                .orElseThrow(() -> new RuntimeException("Permit not found for this QR code"));
+        // Check if input is Permit Number (starts with WP-) or QR Code (starts with
+        // PERMIT-)
+        if (inputData != null && inputData.startsWith("WP-")) {
+            permit = permitRepository.findByPermitNumber(inputData)
+                    .orElseThrow(() -> new RuntimeException("Permit not found: " + inputData));
+        } else if (qrCodeService.isValidQRCodeData(inputData)) {
+            permit = permitRepository.findByQrCodeData(inputData)
+                    .orElseThrow(() -> new RuntimeException("Permit not found for this QR code"));
+        } else {
+            throw new RuntimeException("Invalid QR code or Permit Number format");
+        }
 
         // Verify permit status
         if (permit.getStatus() != WorkingPermit.PermitStatus.APPROVED) {
@@ -91,14 +100,19 @@ public class CheckInService {
      * Verify QR code and OTP (for initial verification before check-in)
      */
     public WorkingPermit verifyQRCodeAndOTP(String qrCodeData, String otpCode) {
-        // Validate QR code format
-        if (!qrCodeService.isValidQRCodeData(qrCodeData)) {
-            throw new RuntimeException("Invalid QR code format");
-        }
+        WorkingPermit permit;
 
-        // Find permit by QR code
-        WorkingPermit permit = permitRepository.findByQrCodeData(qrCodeData)
-                .orElseThrow(() -> new RuntimeException("No permit found for this QR code"));
+        // Check if input is Permit Number (starts with WP-) or QR Code (starts with
+        // PERMIT-)
+        if (qrCodeData != null && qrCodeData.startsWith("WP-")) {
+            permit = permitRepository.findByPermitNumber(qrCodeData)
+                    .orElseThrow(() -> new RuntimeException("Permit not found: " + qrCodeData));
+        } else if (qrCodeService.isValidQRCodeData(qrCodeData)) {
+            permit = permitRepository.findByQrCodeData(qrCodeData)
+                    .orElseThrow(() -> new RuntimeException("No permit found for this QR code"));
+        } else {
+            throw new RuntimeException("Invalid QR code or Permit Number format");
+        }
 
         // Verify OTP
         if (!otpService.verifyOTP(permit.getId(), otpCode)) {
