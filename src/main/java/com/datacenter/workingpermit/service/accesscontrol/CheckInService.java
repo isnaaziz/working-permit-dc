@@ -57,7 +57,7 @@ public class CheckInService {
         }
 
         // Verify OTP
-        if (!otpService.verifyOTP(permit.getId(), request.getOtpCode())) {
+        if (!otpService.verifyOTP(permit, request.getOtpCode())) {
             // Log failed access
             accessLogService.logAccess(
                     permit,
@@ -83,6 +83,7 @@ public class CheckInService {
         TempIdCard idCard = idCardService.issueIdCard(permit);
 
         // Update permit status to ACTIVE
+        log.info("Calling activatePermit for permit ID: {}", permit.getId());
         permitActionService.activatePermit(permit.getId());
 
         // Log successful check-in
@@ -115,7 +116,7 @@ public class CheckInService {
         }
 
         // Verify OTP
-        if (!otpService.verifyOTP(permit.getId(), otpCode)) {
+        if (!otpService.verifyOTP(permit, otpCode)) {
             throw new RuntimeException("Invalid or expired OTP code");
         }
 

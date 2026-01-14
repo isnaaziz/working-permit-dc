@@ -71,6 +71,23 @@ public class OTPService {
     }
 
     /**
+     * Verify OTP code against WorkingPermit entity (Persistent verification)
+     */
+    public boolean verifyOTP(com.datacenter.workingpermit.model.WorkingPermit permit, String otpCode) {
+        if (permit.getOtpCode() == null || permit.getOtpExpiryTime() == null) {
+            return false;
+        }
+
+        // Check if expired
+        if (LocalDateTime.now().isAfter(permit.getOtpExpiryTime())) {
+            return false;
+        }
+
+        // Check if code matches
+        return permit.getOtpCode().equals(otpCode);
+    }
+
+    /**
      * Check if OTP is expired
      */
     public boolean isOTPExpired(Long permitId) {

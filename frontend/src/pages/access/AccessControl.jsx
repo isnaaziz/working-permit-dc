@@ -7,7 +7,7 @@ import { permitService } from '../../services';
 const AccessControl = () => {
   const { user } = useAuth();
   const { verify, checkIn, checkOut, fetchLogs, loading: accessLoading } = useAccess();
-  
+
   const [activeTab, setActiveTab] = useState('scan');
   const [qrCode, setQrCode] = useState('');
   const [otp, setOtp] = useState('');
@@ -28,7 +28,7 @@ const AccessControl = () => {
         name: permit.visitor?.fullName || 'Unknown',
         company: permit.visitor?.company || '-',
         permitId: permit.permitNumber,
-        checkInTime: permit.actualCheckIn ? new Date(permit.actualCheckIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-',
+        checkInTime: permit.actualCheckInTime ? new Date(permit.actualCheckInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-',
         area: permit.dataCenter?.replace('_', ' ') || permit.dataCenter,
         permitData: permit
       }));
@@ -56,10 +56,10 @@ const AccessControl = () => {
 
     setError(null);
     setProcessing(true);
-    
+
     try {
       const result = await verify(qrCode.trim(), otp.trim());
-      
+
       if (result && result.valid) {
         setVerificationResult({
           success: true,
@@ -92,13 +92,14 @@ const AccessControl = () => {
 
     setProcessing(true);
     setError(null);
-    
+
     try {
-      await checkIn(verificationResult.permit.id, {
-        checkedInBy: user?.id,
+      await checkIn({
+        qrCodeData: qrCode,
+        otpCode: otp,
         location: 'Main Entrance'
       });
-      
+
       alert('Check-in successful!');
       setVerificationResult(null);
       setQrCode('');
@@ -123,7 +124,7 @@ const AccessControl = () => {
         checkedOutBy: user?.id,
         location: 'Main Entrance'
       });
-      
+
       alert(`${visitor.name} has been checked out successfully!`);
       loadActiveVisitors(); // Refresh active visitors list
     } catch (err) {
@@ -153,11 +154,10 @@ const AccessControl = () => {
               setActiveTab(tab.id);
               if (tab.id === 'active') loadActiveVisitors();
             }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-              activeTab === tab.id
-                ? 'bg-white text-primary-600 shadow-sm'
-                : 'text-gray-600 hover:text-primary-600'
-            }`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === tab.id
+              ? 'bg-white text-primary-600 shadow-sm'
+              : 'text-gray-600 hover:text-primary-600'
+              }`}
           >
             <i className={tab.icon}></i>
             {tab.label}
@@ -215,9 +215,9 @@ const AccessControl = () => {
                   icon={<i className="ri-lock-line"></i>}
                 />
 
-                <Button 
-                  className="w-full" 
-                  onClick={handleVerify} 
+                <Button
+                  className="w-full"
+                  onClick={handleVerify}
                   icon={<i className="ri-shield-check-line"></i>}
                   disabled={processing}
                 >
@@ -270,9 +270,9 @@ const AccessControl = () => {
                   }}>
                     Cancel
                   </Button>
-                  <Button 
-                    className="flex-1" 
-                    onClick={handleCheckIn} 
+                  <Button
+                    className="flex-1"
+                    onClick={handleCheckIn}
                     icon={<i className="ri-login-box-line"></i>}
                     disabled={processing}
                   >
@@ -324,7 +324,7 @@ const AccessControl = () => {
               {activeVisitors.map((visitor, index) => (
                 <Card key={visitor.id || index} className="relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-2 h-full bg-success"></div>
-                  
+
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-success to-primary-500 flex items-center justify-center text-white font-bold">
                       {visitor.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
@@ -350,9 +350,9 @@ const AccessControl = () => {
                     </div>
                   </div>
 
-                  <Button 
-                    variant="danger" 
-                    size="sm" 
+                  <Button
+                    variant="danger"
+                    size="sm"
                     className="w-full"
                     icon={<i className="ri-logout-box-r-line"></i>}
                     onClick={() => handleCheckOut(visitor)}

@@ -99,6 +99,7 @@ public class PermitActionService {
      */
     @Transactional
     public void activatePermit(Long permitId) {
+        log.info("Activating permit with ID: {}", permitId);
         if (permitId == null)
             throw new IllegalArgumentException("Permit ID cannot be null");
         WorkingPermit permit = permitRepository.findById(permitId)
@@ -107,6 +108,7 @@ public class PermitActionService {
         permit.setStatus(WorkingPermit.PermitStatus.ACTIVE);
         permit.setActualCheckInTime(LocalDateTime.now());
         permitRepository.save(permit);
+        log.info("Permit {} status updated to ACTIVE", permitId);
 
         // Notify PIC
         notificationService.notifyCheckInSuccess(permit);
