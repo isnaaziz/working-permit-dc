@@ -17,6 +17,7 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       title: 'Main Menu',
       items: [
         { name: 'Dashboard', icon: 'ri-dashboard-line', path: '/dashboard' },
+        { name: 'Mutasi Barang', icon: 'ri-exchange-line', path: '/dashboard/mutasi-barang/list' },
       ]
     };
     

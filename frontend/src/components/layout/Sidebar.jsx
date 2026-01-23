@@ -10,6 +10,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         { path: '/permits', icon: 'ri-file-list-3-line', label: 'My Permits' },
         { path: '/approvals', icon: 'ri-check-double-line', label: 'Approvals' },
         { path: '/logs', icon: 'ri-history-line', label: 'Access Logs' },
+        { path: '/dashboard/mutasi-barang/list', icon: 'ri-exchange-line', label: 'Mutasi Barang' },
     ];
 
     return (

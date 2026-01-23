@@ -24,6 +24,12 @@ import { ApprovalList } from './pages/approvals';
 // Access
 import { AccessControl, AccessLogs } from './pages/access';
 
+// Mutasi Barang
+import MutasiBarangPage from './pages/mutasi';
+import MutasiBarangList from './pages/mutasi/MutasiBarangList.jsx';
+import MutasiBarangEdit from './pages/mutasi/MutasiBarangEdit.jsx';
+import MutasiBarangPDF from './pages/mutasi/MutasiBarangPDF.jsx';
+
 // Placeholder for pages under construction
 const PlaceholderPage = ({ title }) => (
   <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -65,6 +71,12 @@ function App() {
             <Route path="permits" element={<PermitList />} />
             <Route path="permits/new" element={<PermitForm />} />
             <Route path="permits/:id" element={<PermitDetail />} />
+
+            {/* Mutasi Barang - All authenticated users */}
+            <Route path="mutasi-barang" element={<MutasiBarangPage />} />
+            <Route path="mutasi-barang/list" element={<MutasiBarangList />} />
+            <Route path="mutasi-barang/:id" element={<MutasiBarangEdit />} />
+            <Route path="mutasi-barang/:id/pdf" element={<MutasiBarangPDF />} />
             
             {/* Approvals - Only PIC, Manager, and Admin */}
             <Route
