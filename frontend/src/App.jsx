@@ -67,7 +67,7 @@ function App() {
           >
             <Route index element={<Dashboard />} />
             
-            {/* Permits - All authenticated users can view, visitors can create */}
+            {/* Permits - All authenticated users can view, visitors can create new */}
             <Route path="permits" element={<PermitList />} />
             <Route path="permits/new" element={<PermitForm />} />
             <Route path="permits/:id" element={<PermitDetail />} />
