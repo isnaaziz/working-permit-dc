@@ -43,16 +43,20 @@ public class DataSeeder implements CommandLineRunner {
                                 "081234567890", "PT Visitor Corp", "3201234567890123", User.UserRole.VISITOR, null);
 
                 User visitor2 = createUser("puspaaaa", "Puspa Indah", "puspa@example.com",
-                                "081234567891", "PT Digital Solutions", "3201234567890124", User.UserRole.VISITOR, null);
+                                "081234567891", "PT Digital Solutions", "3201234567890124", User.UserRole.VISITOR,
+                                null);
 
-                User pic1 = createUser("pic1", "John Doe (PIC)", "pic1@datacenter.com",
-                                "081234567892", "Data Center Corp", "3201234567890125", User.UserRole.PIC, User.Team.TIM_ODC);
+                User pic1 = createUser("pic1", "Rifan", "pic1@datacenter.com",
+                                "081234567892", "Data Center Corp", "3201234567890125", User.UserRole.PIC,
+                                User.Team.TIM_ODC);
 
                 User pic2 = createUser("pic2", "Jane Smith (PIC)", "pic2@datacenter.com",
-                                "081234567893", "Data Center Corp", "3201234567890126", User.UserRole.PIC, User.Team.TIM_INFRA);
+                                "081234567893", "Data Center Corp", "3201234567890126", User.UserRole.PIC,
+                                User.Team.TIM_INFRA);
 
                 User picNetwork = createUser("pic3", "Ahmad Network (PIC)", "pic3@datacenter.com",
-                                "081234567897", "Data Center Corp", "3201234567890130", User.UserRole.PIC, User.Team.TIM_NETWORK);
+                                "081234567897", "Data Center Corp", "3201234567890130", User.UserRole.PIC,
+                                User.Team.TIM_NETWORK);
 
                 User manager1 = createUser("manager1", "Manager One", "manager1@datacenter.com",
                                 "081234567894", "Data Center Corp", "3201234567890127", User.UserRole.MANAGER, null);
@@ -61,20 +65,24 @@ public class DataSeeder implements CommandLineRunner {
                 createPermitsForVisitor(visitor1, picNetwork, manager1);
 
                 createUser("security1", "Security Guard", "security1@datacenter.com",
-                                "081234567895", "Data Center Corp", "3201234567890128", User.UserRole.SECURITY, User.Team.TIM_SECURITY);
+                                "081234567895", "Data Center Corp", "3201234567890128", User.UserRole.SECURITY,
+                                User.Team.TIM_SECURITY);
 
                 createUser("admin", "System Admin", "admin@datacenter.com",
                                 "081234567896", "Data Center Corp", "3201234567890129", User.UserRole.ADMIN, null);
 
                 // Create Administrator roles for each team
                 createUser("admin_odc", "Administrator ODC", "admin_odc@datacenter.com",
-                                "081234567901", "Data Center Corp", "3201234567890131", User.UserRole.ADMINISTRATOR_ODC, User.Team.TIM_ODC);
+                                "081234567901", "Data Center Corp", "3201234567890131", User.UserRole.ADMINISTRATOR_ODC,
+                                User.Team.TIM_ODC);
 
                 createUser("admin_infra", "Administrator INFRA", "admin_infra@datacenter.com",
-                                "081234567902", "Data Center Corp", "3201234567890132", User.UserRole.ADMINISTRATOR_INFRA, User.Team.TIM_INFRA);
+                                "081234567902", "Data Center Corp", "3201234567890132",
+                                User.UserRole.ADMINISTRATOR_INFRA, User.Team.TIM_INFRA);
 
                 createUser("admin_network", "Administrator Network", "admin_network@datacenter.com",
-                                "081234567903", "Data Center Corp", "3201234567890133", User.UserRole.ADMINISTRATOR_NETWORK, User.Team.TIM_NETWORK);
+                                "081234567903", "Data Center Corp", "3201234567890133",
+                                User.UserRole.ADMINISTRATOR_NETWORK, User.Team.TIM_NETWORK);
 
                 log.info("Created {} users", userRepository.count());
 
@@ -265,19 +273,31 @@ public class DataSeeder implements CommandLineRunner {
                 System.out.println("\n" + "=".repeat(80));
                 System.out.println("TEST CREDENTIALS - All passwords: password123");
                 System.out.println("=".repeat(80));
-                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "USERNAME", "FULL NAME", "ROLE", "TEAM"));
+                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "USERNAME", "FULL NAME", "ROLE",
+                                "TEAM"));
                 System.out.println("-".repeat(80));
-                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "visitor1", "Visitor One", "VISITOR", "-"));
-                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "puspaaaa", "Puspa Indah", "VISITOR", "-"));
-                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "pic1", "John Doe (PIC)", "PIC", "Tim ODC"));
-                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "pic2", "Jane Smith (PIC)", "PIC", "Tim INFRA"));
-                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "pic3", "Ahmad Network (PIC)", "PIC", "Tim Network"));
-                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "manager1", "Manager One", "MANAGER", "-"));
-                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "security1", "Security Guard", "SECURITY", "Tim Security"));
-                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "admin", "System Admin", "ADMIN", "-"));
-                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "admin_odc", "Administrator ODC", "ADMINISTRATOR_ODC", "Tim ODC"));
-                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "admin_infra", "Administrator INFRA", "ADMINISTRATOR_INFRA", "Tim INFRA"));
-                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "admin_network", "Administrator Network", "ADMINISTRATOR_NETWORK", "Tim Network"));
+                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "visitor1", "Visitor One", "VISITOR",
+                                "-"));
+                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "puspaaaa", "Puspa Indah", "VISITOR",
+                                "-"));
+                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "pic1", "Rifan", "PIC",
+                                "Tim ODC"));
+                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "pic2", "Jane Smith (PIC)", "PIC",
+                                "Tim INFRA"));
+                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "pic3", "Ahmad Network (PIC)", "PIC",
+                                "Tim Network"));
+                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "manager1", "Manager One", "MANAGER",
+                                "-"));
+                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "security1", "Security Guard",
+                                "SECURITY", "Tim Security"));
+                System.out.println(
+                                String.format("%-15s | %-25s | %-20s | %-12s", "admin", "System Admin", "ADMIN", "-"));
+                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "admin_odc", "Administrator ODC",
+                                "ADMINISTRATOR_ODC", "Tim ODC"));
+                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "admin_infra", "Administrator INFRA",
+                                "ADMINISTRATOR_INFRA", "Tim INFRA"));
+                System.out.println(String.format("%-15s | %-25s | %-20s | %-12s", "admin_network",
+                                "Administrator Network", "ADMINISTRATOR_NETWORK", "Tim Network"));
                 System.out.println("=".repeat(80));
                 System.out.println("Frontend URL: http://localhost:8080");
                 System.out.println("Each visitor has 6 permits with different statuses for testing");
