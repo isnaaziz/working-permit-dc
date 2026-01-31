@@ -50,6 +50,12 @@ const mutasiService = {
     formData.append('file', file);
     return api.post(`/mutasi-barang/${id}/upload`, formData);
   },
+
+  async viewDocument(id) {
+    return api.get(`/mutasi-barang/${id}/document`, {
+      responseType: 'blob',
+    });
+  },
 };
 
 export default mutasiService;

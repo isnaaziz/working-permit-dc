@@ -24,16 +24,21 @@ const api = {
   },
 
   // Generic GET request
-  async get(endpoint) {
+  async get(endpoint, options = {}) {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         headers: this.getHeaders(),
+        ...options
       });
       this.handleResponse(response);
 
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || 'Request failed');
+      }
+
+      if (options.responseType === 'blob') {
+        return await response.blob();
       }
       return await response.json();
     } catch (error) {

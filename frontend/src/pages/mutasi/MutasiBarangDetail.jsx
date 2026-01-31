@@ -177,7 +177,16 @@ export default function MutasiBarangDetail() {
           {data.documentPath && (
             <Button
               variant="secondary"
-              onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/mutasi-barang/${id}/document`, '_blank')}
+              onClick={async () => {
+                try {
+                  const blob = await mutasiService.viewDocument(id);
+                  const url = window.URL.createObjectURL(blob);
+                  window.open(url, '_blank');
+                } catch (e) {
+                  console.error('Failed to view document', e);
+                  alert('Gagal membuka dokumen');
+                }
+              }}
               icon={<i className="ri-file-text-line"></i>}
             >
               Lihat Dokumen
