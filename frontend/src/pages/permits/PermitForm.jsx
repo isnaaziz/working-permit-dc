@@ -107,12 +107,12 @@ const PermitForm = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    
+
     try {
       // Prepare permit data for API
       const scheduledStartTime = `${formData.startDate}T${formData.startTime}:00`;
       const scheduledEndTime = `${formData.endDate}T${formData.endTime}:00`;
-      
+
       const permitData = {
         visitPurpose: formData.visitPurpose,
         visitType: formData.visitType,
@@ -120,15 +120,26 @@ const PermitForm = () => {
         scheduledStartTime,
         scheduledEndTime,
         picId: parseInt(formData.picId),
-        equipmentList: formData.equipmentList 
-          ? formData.equipmentList.split(',').map(item => item.trim()) 
+        equipmentList: formData.equipmentList
+          ? formData.equipmentList.split(',').map(item => item.trim())
           : [],
-        workOrderDocument: formData.workOrderDocument,
+        // workOrderDocument is handled separately via upload
       };
-      
+
+      // 1. Create Permit
       const result = await permitService.create(permitData, user.userId);
-      
-      if (result.success) {
+
+      if (result.success && result.permitId) {
+        // 2. Upload Document if exists
+        if (formData.workOrderDocument && formData.workOrderDocument instanceof File) {
+          try {
+            await permitService.uploadDocument(result.permitId, formData.workOrderDocument);
+          } catch (uploadErr) {
+            console.error("File upload failed", uploadErr);
+            alert("Permit created but DOCUMENT UPLOAD FAILED. Please try specific file upload again or contact support. Error: " + (uploadErr.response?.data?.message || uploadErr.message));
+          }
+        }
+
         navigate('/dashboard/permits');
       } else {
         setError(result.message || 'Failed to create permit');
@@ -140,9 +151,9 @@ const PermitForm = () => {
     }
   };
 
-  const pics = picUsers.map(u => ({ 
-    id: u.id.toString(), 
-    name: `${u.fullName} - ${u.company || 'DC Staff'}` 
+  const pics = picUsers.map(u => ({
+    id: u.id.toString(),
+    name: `${u.fullName} - ${u.company || 'DC Staff'}`
   }));
 
   return (
@@ -162,11 +173,10 @@ const PermitForm = () => {
         ].map((s, i) => (
           <React.Fragment key={s.num}>
             <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                step >= s.num 
-                  ? 'bg-primary-600 text-white' 
-                  : 'bg-gray-200 text-gray-500'
-              }`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= s.num
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-200 text-gray-500'
+                }`}>
                 {step > s.num ? <i className="ri-check-line"></i> : s.num}
               </div>
               <span className={`text-sm font-medium ${step >= s.num ? 'text-dark-600' : 'text-gray-400'}`}>
@@ -280,18 +290,19 @@ const PermitForm = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-dark-600 mb-2">Assign PIC (Person in Charge)</label>
+                <label className="block text-sm font-medium text-dark-600 mb-2">Tim Pendamping</label>
                 <select
                   name="picId"
                   value={formData.picId}
                   onChange={handleChange}
                   className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
-                  <option value="">Select PIC...</option>
+                  <option value="">Pilih Tim Pendamping...</option>
                   {pics.map((pic) => (
                     <option key={pic.id} value={pic.id}>{pic.name}</option>
                   ))}
                 </select>
+                <p className="text-xs text-gray-500 mt-1">Pilih PIC dari Tim ODC, Tim INFRA, atau Tim Network</p>
               </div>
 
               <div className="flex justify-between">
@@ -309,23 +320,51 @@ const PermitForm = () => {
             <>
               <div>
                 <label className="block text-sm font-medium text-dark-600 mb-2">Upload Documents</label>
-                <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-primary-500 transition-colors">
-                  <input
-                    type="file"
-                    name="documents"
-                    onChange={handleChange}
-                    className="hidden"
-                    id="document-upload"
-                    multiple
-                  />
-                  <label htmlFor="document-upload" className="cursor-pointer">
-                    <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
-                      <i className="ri-upload-cloud-line text-3xl text-primary-600"></i>
+
+                {!formData.workOrderDocument ? (
+                  <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-primary-500 transition-colors bg-gray-50/50">
+                    <input
+                      type="file"
+                      name="workOrderDocument"
+                      onChange={handleChange}
+                      className="hidden"
+                      id="document-upload"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    />
+                    <label htmlFor="document-upload" className="cursor-pointer block w-full h-full">
+                      <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4 group-hover:bg-primary-200 transition-colors">
+                        <i className="ri-upload-cloud-line text-3xl text-primary-600"></i>
+                      </div>
+                      <p className="text-dark-600 font-medium mb-1">Click to upload or drag and drop</p>
+                      <p className="text-sm text-gray-400">PDF, DOC, or images up to 10MB</p>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center">
+                        <i className="ri-file-text-line text-primary-600 text-xl"></i>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-dark-600 truncate max-w-50 sm:max-w-xs">
+                          {formData.workOrderDocument.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {(formData.workOrderDocument.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-dark-600 font-medium mb-1">Click to upload or drag and drop</p>
-                    <p className="text-sm text-gray-400">PDF, DOC, or images up to 10MB</p>
-                  </label>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, workOrderDocument: '' }))}
+                      className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-lg transition-colors"
+                      title="Remove file"
+                    >
+                      <i className="ri-close-line text-xl"></i>
+                    </button>
+                  </div>
+                )}
+
                 <p className="text-sm text-gray-500 mt-2">
                   Upload: ID Card, Authorization Letter, Safety Certifications (if required)
                 </p>

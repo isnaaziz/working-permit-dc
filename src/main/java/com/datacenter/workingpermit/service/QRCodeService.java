@@ -26,9 +26,19 @@ public class QRCodeService {
 
     /**
      * Generate QR Code data string (unique identifier)
+     * Format: PERMIT-{permitNumber}-{UUID}
      */
     public String generateQRCodeData(Long permitId) {
         return String.format("PERMIT-%d-%s", permitId, UUID.randomUUID().toString());
+    }
+
+    /**
+     * Generate QR Code data with OTP for scanning at gate
+     * Format: PERMIT-{permitNumber}-OTP-{otpCode}
+     * This allows security to scan and get the OTP directly
+     */
+    public String generateQRCodeDataWithOTP(String permitNumber, String otpCode) {
+        return String.format("PERMIT-%s-OTP-%s", permitNumber, otpCode);
     }
 
     /**

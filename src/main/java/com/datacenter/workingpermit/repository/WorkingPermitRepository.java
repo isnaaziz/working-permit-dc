@@ -14,32 +14,48 @@ import java.util.Optional;
 @Repository
 public interface WorkingPermitRepository extends JpaRepository<WorkingPermit, Long> {
 
-    Optional<WorkingPermit> findByPermitNumber(String permitNumber);
+        Optional<WorkingPermit> findByPermitNumber(String permitNumber);
 
-    Optional<WorkingPermit> findByQrCodeData(String qrCodeData);
+        Optional<WorkingPermit> findByQrCodeData(String qrCodeData);
 
-    List<WorkingPermit> findByVisitor(User visitor);
+        Optional<WorkingPermit> findByOtpCode(String otpCode);
 
-    List<WorkingPermit> findByPic(User pic);
+        @Query("SELECT wp FROM WorkingPermit wp WHERE UPPER(wp.otpCode) = UPPER(:otpCode)")
+        Optional<WorkingPermit> findByOtpCodeIgnoreCase(@Param("otpCode") String otpCode);
 
-    List<WorkingPermit> findByStatus(WorkingPermit.PermitStatus status);
+        @Query("SELECT wp FROM WorkingPermit wp WHERE wp.otpCode IS NOT NULL AND wp.status = 'APPROVED' ORDER BY wp.createdAt DESC")
+        List<WorkingPermit> findAllWithOtpCode();
 
-    List<WorkingPermit> findByVisitorAndStatus(User visitor, WorkingPermit.PermitStatus status);
+        List<WorkingPermit> findByVisitorOrderByCreatedAtDesc(User visitor);
 
-    List<WorkingPermit> findByPicAndStatus(User pic, WorkingPermit.PermitStatus status);
+        List<WorkingPermit> findByPicOrderByCreatedAtDesc(User pic);
 
-    @Query("SELECT wp FROM WorkingPermit wp WHERE wp.status = :status " +
-            "AND wp.scheduledStartTime BETWEEN :startDate AND :endDate")
-    List<WorkingPermit> findByStatusAndScheduledBetween(
-            @Param("status") WorkingPermit.PermitStatus status,
-            @Param("startDate") LocalDateTime startDate,
-            @Param("endDate") LocalDateTime endDate);
+        List<WorkingPermit> findByStatusOrderByCreatedAtDesc(WorkingPermit.PermitStatus status);
 
-    @Query("SELECT wp FROM WorkingPermit wp WHERE wp.status = 'APPROVED' " +
-            "AND wp.otpExpiryTime < :now AND wp.actualCheckInTime IS NULL")
-    List<WorkingPermit> findExpiredOtpPermits(@Param("now") LocalDateTime now);
+        @Query("SELECT wp FROM WorkingPermit wp " +
+                        "LEFT JOIN FETCH wp.visitor " +
+                        "LEFT JOIN FETCH wp.pic " +
+                        "WHERE wp.status = :status " +
+                        "ORDER BY wp.createdAt DESC")
+        List<WorkingPermit> findByStatusWithDetails(@Param("status") WorkingPermit.PermitStatus status);
 
-    @Query("SELECT wp FROM WorkingPermit wp WHERE wp.status = 'ACTIVE' " +
-            "AND wp.scheduledEndTime < :now")
-    List<WorkingPermit> findOverdueActivePermits(@Param("now") LocalDateTime now);
+        List<WorkingPermit> findByVisitorAndStatusOrderByCreatedAtDesc(User visitor, WorkingPermit.PermitStatus status);
+
+        List<WorkingPermit> findByPicAndStatusOrderByCreatedAtDesc(User pic, WorkingPermit.PermitStatus status);
+
+        @Query("SELECT wp FROM WorkingPermit wp WHERE wp.status = :status " +
+                        "AND wp.scheduledStartTime BETWEEN :startDate AND :endDate " +
+                        "ORDER BY wp.createdAt DESC")
+        List<WorkingPermit> findByStatusAndScheduledBetween(
+                        @Param("status") WorkingPermit.PermitStatus status,
+                        @Param("startDate") LocalDateTime startDate,
+                        @Param("endDate") LocalDateTime endDate);
+
+        @Query("SELECT wp FROM WorkingPermit wp WHERE wp.status = 'APPROVED' " +
+                        "AND wp.otpExpiryTime < :now AND wp.actualCheckInTime IS NULL")
+        List<WorkingPermit> findExpiredOtpPermits(@Param("now") LocalDateTime now);
+
+        @Query("SELECT wp FROM WorkingPermit wp WHERE wp.status = 'ACTIVE' " +
+                        "AND wp.scheduledEndTime < :now")
+        List<WorkingPermit> findOverdueActivePermits(@Param("now") LocalDateTime now);
 }

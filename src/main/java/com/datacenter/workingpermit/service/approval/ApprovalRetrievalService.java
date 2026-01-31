@@ -99,4 +99,28 @@ public class ApprovalRetrievalService {
         return approvalRepository.findById(approvalId)
                 .orElseThrow(() -> new RuntimeException("Approval not found with id: " + approvalId));
     }
+
+    /**
+     * Get approval history for a user (both PIC and Manager)
+     * Returns all approvals where user was the approver and status is APPROVED or
+     * REJECTED
+     */
+    public List<Approval> getApprovalHistory(Long userId) {
+        if (userId == null)
+            throw new IllegalArgumentException("User ID cannot be null");
+
+        return approvalRepository.findByApproverIdAndStatusInOrderByReviewedAtDesc(
+                userId,
+                List.of(Approval.ApprovalStatus.APPROVED, Approval.ApprovalStatus.REJECTED));
+    }
+
+    /**
+     * Get all approvals by a user (any status)
+     */
+    public List<Approval> getAllApprovalsByUser(Long userId) {
+        if (userId == null)
+            throw new IllegalArgumentException("User ID cannot be null");
+
+        return approvalRepository.findByApproverIdOrderByReviewedAtDesc(userId);
+    }
 }

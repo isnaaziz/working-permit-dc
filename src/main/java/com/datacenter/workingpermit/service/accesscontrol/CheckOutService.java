@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -37,13 +39,23 @@ public class CheckOutService {
 
         // Verify status
         if (permit.getStatus() != WorkingPermit.PermitStatus.ACTIVE) {
-            throw new RuntimeException("Permit is not active");
+            throw new RuntimeException("Permit is not active. Current status: " + permit.getStatus());
         }
 
-        // Deactivate ID card
-        TempIdCard idCard = idCardRepository.findByWorkingPermit(permit)
-                .orElseThrow(() -> new RuntimeException("ID card not found"));
-        idCardService.deactivateIdCard(idCard.getId(), "Visit completed");
+        // Try to deactivate ID card if exists (optional - not all check-ins issue ID
+        // cards)
+        Optional<TempIdCard> idCardOpt = idCardRepository.findByWorkingPermit(permit);
+        if (idCardOpt.isPresent()) {
+            TempIdCard idCard = idCardOpt.get();
+            try {
+                idCardService.deactivateIdCard(idCard.getId(), "Visit completed");
+                log.info("ID card deactivated for permit: {}", permit.getPermitNumber());
+            } catch (Exception e) {
+                log.warn("Failed to deactivate ID card for permit {}: {}", permit.getPermitNumber(), e.getMessage());
+            }
+        } else {
+            log.info("No ID card found for permit: {} - proceeding with checkout", permit.getPermitNumber());
+        }
 
         // Complete permit
         permitActionService.completePermit(permitId);
@@ -52,8 +64,11 @@ public class CheckOutService {
         accessLogService.logAccess(
                 permit,
                 AccessLog.AccessType.CHECK_OUT,
-                location,
+                location != null ? location : "Main Gate",
                 AccessLog.AccessStatus.SUCCESS,
                 "Check-out successful");
+
+        log.info("✅ Check-out completed for permit: {} - Visitor: {}",
+                permit.getPermitNumber(), permit.getVisitor().getFullName());
     }
 }

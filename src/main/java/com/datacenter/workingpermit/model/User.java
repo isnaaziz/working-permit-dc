@@ -49,6 +49,9 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private UserRole role;
 
+    @Enumerated(EnumType.STRING)
+    private Team team; // Tim pendamping (ODC/INFRA/Network)
+
     @Builder.Default
     @Column(nullable = false)
     private Boolean enabled = true;
@@ -121,6 +124,27 @@ public class User implements UserDetails {
         PIC, // Person In Charge (Karyawan Internal)
         MANAGER, // Manajer/Approver
         SECURITY, // Petugas Keamanan
-        ADMIN // Administrator Sistem
+        ADMIN, // Administrator Sistem
+        ADMINISTRATOR_ODC, // Administrator Tim ODC
+        ADMINISTRATOR_INFRA, // Administrator Tim INFRA
+        ADMINISTRATOR_NETWORK // Administrator Tim Network
+    }
+
+    public enum Team {
+        TIM_ODC("Tim ODC"),
+        TIM_INFRA("Tim INFRA"),
+        TIM_NETWORK("Tim Network"),
+        TIM_SECURITY("Tim Security"),
+        OTHER("Other");
+
+        private final String displayName;
+
+        Team(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
     }
 }

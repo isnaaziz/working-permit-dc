@@ -1,0 +1,302 @@
+<mxfile host="app.diagrams.net" modified="2026-01-30T00:00:00.000Z" agent="5.0" version="22.1.16" etag="sequence-approval" type="device">
+  <diagram name="Permit Approval Flow" id="approval-flow">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Actors/Components -->
+        <mxCell id="manager" value="Manager" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="40" width="30" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="frontend" value="Frontend&#xa;(Dashboard)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="160" y="40" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="controller" value="Controller&#xa;(Approval)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="320" y="40" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="approvalService" value="Service&#xa;(ApprovalAction)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="480" y="40" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="permitService" value="Service&#xa;(PermitAction)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="640" y="40" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qrService" value="Service&#xa;(QRCode)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="800" y="40" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="otpService" value="Service&#xa;(OTP)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="960" y="40" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="emailService" value="Service&#xa;(Email)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="40" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- Lifelines -->
+        <mxCell id="ll-manager" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;" edge="1" parent="1" source="manager">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="75" y="900" as="sourcePoint" />
+            <mxPoint x="75" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="ll-frontend" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;" edge="1" parent="1" source="frontend">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="210" y="900" as="sourcePoint" />
+            <mxPoint x="210" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="ll-controller" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;" edge="1" parent="1" source="controller">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="370" y="900" as="sourcePoint" />
+            <mxPoint x="370" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="ll-approvalService" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;" edge="1" parent="1" source="approvalService">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="530" y="900" as="sourcePoint" />
+            <mxPoint x="530" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="ll-permitService" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;" edge="1" parent="1" source="permitService">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="690" y="900" as="sourcePoint" />
+            <mxPoint x="690" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="ll-qrService" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;" edge="1" parent="1" source="qrService">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="850" y="900" as="sourcePoint" />
+            <mxPoint x="850" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="ll-otpService" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;" edge="1" parent="1" source="otpService">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1010" y="900" as="sourcePoint" />
+            <mxPoint x="1010" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="ll-emailService" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;" edge="1" parent="1" source="emailService">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1170" y="900" as="sourcePoint" />
+            <mxPoint x="1170" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Messages -->
+        <mxCell id="msg1" value="1: View pending approvals" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="75" y="140" as="sourcePoint" />
+            <mxPoint x="210" y="140" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg2" value="2: GET /api/approvals/pending" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="210" y="170" as="sourcePoint" />
+            <mxPoint x="370" y="170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg3" value="3: List&lt;Approval&gt;" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="370" y="200" as="sourcePoint" />
+            <mxPoint x="210" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg4" value="4: Display pending list" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="210" y="230" as="sourcePoint" />
+            <mxPoint x="75" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg5" value="5: Click Approve" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="75" y="270" as="sourcePoint" />
+            <mxPoint x="210" y="270" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg6" value="6: POST /api/approvals/{id}/approve&#xa;{comments}" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="210" y="300" as="sourcePoint" />
+            <mxPoint x="370" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg7" value="7: approveApproval(id, comments)" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="370" y="330" as="sourcePoint" />
+            <mxPoint x="530" y="330" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg8" value="8: Update approval status&#xa;to APPROVED" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="530" y="360" as="sourcePoint" />
+            <mxPoint x="530" y="360" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="590" y="360" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg9" value="9: Check if all approvals complete" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="530" y="390" as="sourcePoint" />
+            <mxPoint x="530" y="390" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="590" y="390" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="alt1" value="alt" style="shape=umlFrame;whiteSpace=wrap;html=1;width=40;height=20;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="500" y="410" width="740" height="370" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="alt1-label" value="[All approvals complete]" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="510" y="435" width="150" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="msg10" value="10: approvePermit(permitId)" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="530" y="460" as="sourcePoint" />
+            <mxPoint x="690" y="460" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg11" value="11: generateAndStoreOTP(permitId)" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="690" y="490" as="sourcePoint" />
+            <mxPoint x="1010" y="490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg12" value="12: Generate 6-digit OTP" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="1010" y="520" as="sourcePoint" />
+            <mxPoint x="1010" y="520" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1070" y="520" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg13" value="13: otpCode (e.g., 123456)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1010" y="550" as="sourcePoint" />
+            <mxPoint x="690" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg14" value="14: generateQRCodeDataWithOTP&#xa;(permitNumber, otpCode)" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="690" y="580" as="sourcePoint" />
+            <mxPoint x="850" y="580" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg15" value="15: qrCodeData&#xa;(PERMIT-XXX-OTP-123456)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="850" y="610" as="sourcePoint" />
+            <mxPoint x="690" y="610" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg16" value="16: saveQRCodeToFile(qrCodeData)" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="690" y="640" as="sourcePoint" />
+            <mxPoint x="850" y="640" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg17" value="17: Update permit:&#xa;- status = APPROVED&#xa;- qrCodeData&#xa;- otpCode&#xa;- otpExpiryTime" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="690" y="670" as="sourcePoint" />
+            <mxPoint x="690" y="670" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="750" y="670" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg18" value="18: sendOTPEmail(visitor, otp, permit)" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="690" y="710" as="sourcePoint" />
+            <mxPoint x="1170" y="710" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg19" value="19: Send email with&#xa;QR code &amp; OTP" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="1170" y="740" as="sourcePoint" />
+            <mxPoint x="1170" y="740" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1230" y="740" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="alt1-divider" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="760" width="740" height="8" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="alt1-label2" value="[Not all approvals complete]" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="510" y="770" width="180" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="msg20" value="20: Do nothing, wait for other approvers" style="html=1;verticalAlign=bottom;endArrow=block;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="80" relative="1" as="geometry">
+            <mxPoint x="530" y="800" as="sourcePoint" />
+            <mxPoint x="530" y="800" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="590" y="800" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg21" value="21: Success response" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="840" as="sourcePoint" />
+            <mxPoint x="370" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg22" value="22: Display success message" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="370" y="870" as="sourcePoint" />
+            <mxPoint x="210" y="870" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="msg23" value="23: Approval confirmed" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;rounded=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="210" y="900" as="sourcePoint" />
+            <mxPoint x="75" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Notes -->
+        <mxCell id="note1" value="Note: Approval workflow requires:&#xa;1. PIC approval (PENDING_PIC)&#xa;2. Manager approval (PENDING_MANAGER)&#xa;Only after both approvals, permit becomes APPROVED" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#ffe6cc;strokeColor=#d79b00;size=15;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="940" width="320" height="80" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

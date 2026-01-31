@@ -68,8 +68,10 @@ public class WorkingPermit {
 
     private String qrCodeImagePath; // Path ke file QR code image
 
+    @Column(name = "otp_code", length = 10)
     private String otpCode; // Kode 2FA sementara
 
+    @Column(name = "otp_expiry_time")
     private LocalDateTime otpExpiryTime; // Waktu kadaluarsa OTP
 
     private LocalDateTime actualCheckInTime; // Waktu check-in aktual

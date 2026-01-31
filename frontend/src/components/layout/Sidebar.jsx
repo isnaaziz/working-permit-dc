@@ -10,6 +10,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         { path: '/permits', icon: 'ri-file-list-3-line', label: 'My Permits' },
         { path: '/approvals', icon: 'ri-check-double-line', label: 'Approvals' },
         { path: '/logs', icon: 'ri-history-line', label: 'Access Logs' },
+        { path: '/dashboard/checked-in', icon: 'ri-user-follow-line', label: 'Visitor Aktif' },
         { path: '/dashboard/mutasi-barang/list', icon: 'ri-exchange-line', label: 'Mutasi Barang' },
     ];
 
@@ -20,7 +21,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         >
             <div className="flex flex-col h-full">
                 {/* Brand */}
-                <div className="flex items-center gap-3 p-6 h-[72px] border-b border-gray-800">
+                <div className="flex items-center gap-3 p-6 h-18 border-b border-gray-800">
                     <i className="ri-shield-check-fill text-2xl text-accent"></i>
                     <span className="text-xl font-bold tracking-tight">DC Access</span>
                 </div>

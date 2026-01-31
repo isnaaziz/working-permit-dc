@@ -46,13 +46,14 @@ const AccessLogs = () => {
       });
     }
 
-    // Search filter
+    // Search filter - updated to use new DTO structure
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(log => 
-        (log.visitor?.fullName || '').toLowerCase().includes(query) ||
-        (log.permit?.permitNumber || '').toLowerCase().includes(query) ||
-        (log.location || '').toLowerCase().includes(query)
+        (log.visitorName || '').toLowerCase().includes(query) ||
+        (log.permitNumber || '').toLowerCase().includes(query) ||
+        (log.location || '').toLowerCase().includes(query) ||
+        (log.company || '').toLowerCase().includes(query)
       );
     }
 
@@ -103,17 +104,19 @@ const AccessLogs = () => {
   };
 
   const handleExport = () => {
-    // Create CSV content
-    const headers = ['Time', 'Date', 'Visitor', 'Permit ID', 'Type', 'Location'];
+    // Create CSV content - updated to use new DTO structure
+    const headers = ['Time', 'Date', 'Visitor', 'Company', 'Permit ID', 'Type', 'Location', 'Data Center'];
     const rows = filteredLogs.map(log => {
       const { time, date } = formatDateTime(log.timestamp || log.createdAt);
       return [
         time,
         date,
-        log.visitor?.fullName || log.checkedInBy || '-',
-        log.permit?.permitNumber || '-',
+        log.visitorName || '-',
+        log.company || '-',
+        log.permitNumber || '-',
         getLogLabel(log.accessType),
-        log.location || '-'
+        log.location || '-',
+        log.dataCenter?.replace('_', ' ') || '-'
       ];
     });
     
@@ -212,25 +215,35 @@ const AccessLogs = () => {
               const { time, date } = formatDateTime(log.timestamp || log.createdAt);
               return (
                 <div key={log.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors">
-                  <div className={`w-10 h-10 rounded-full ${bgColor} flex items-center justify-center flex-shrink-0`}>
+                  <div className={`w-10 h-10 rounded-full ${bgColor} flex items-center justify-center shrink-0`}>
                     <i className={`${icon} ${textColor}`}></i>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-dark-600">
-                        {log.visitor?.fullName || log.checkedInBy || 'Unknown'}
+                        {log.visitorName || 'Unknown'}
                       </span>
                       <Badge variant={variant} size="sm">{getLogLabel(log.accessType)}</Badge>
                     </div>
-                    <div className="text-sm text-gray-500 flex items-center gap-3">
+                    <div className="text-sm text-gray-500 flex flex-wrap items-center gap-3">
                       <span className="flex items-center gap-1">
                         <i className="ri-file-text-line"></i>
-                        {log.permit?.permitNumber || '-'}
+                        {log.permitNumber || '-'}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <i className="ri-building-line"></i>
+                        {log.company || '-'}
                       </span>
                       <span className="flex items-center gap-1">
                         <i className="ri-map-pin-line"></i>
                         {log.location || '-'}
                       </span>
+                      {log.dataCenter && (
+                        <span className="flex items-center gap-1">
+                          <i className="ri-server-line"></i>
+                          {log.dataCenter.replace('_', ' ')}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="text-right text-sm">

@@ -8,6 +8,7 @@ import com.datacenter.workingpermit.service.permit.PermitCreationService;
 import com.datacenter.workingpermit.service.permit.PermitRetrievalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/permits")
 @RequiredArgsConstructor
+@Slf4j
 public class WorkingPermitController {
 
     private final PermitCreationService permitCreationService;
@@ -96,8 +98,10 @@ public class WorkingPermitController {
      */
     @GetMapping("/status/{status}")
     public ResponseEntity<List<WorkingPermit>> getPermitsByStatus(@PathVariable String status) {
+        log.info("🔍 Getting permits with status: {}", status);
         WorkingPermit.PermitStatus permitStatus = WorkingPermit.PermitStatus.valueOf(status);
         List<WorkingPermit> permits = permitRetrievalService.getPermitsByStatus(permitStatus);
+        log.info("✅ Found {} permits with status {}", permits.size(), status);
         return ResponseEntity.ok(permits);
     }
 
@@ -177,5 +181,71 @@ public class WorkingPermitController {
         response.put("otp", newOtp);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Upload supporting document
+     * POST /api/permits/{id}/upload
+     */
+    @PostMapping(value = "/{id}/upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> uploadDocument(
+            @PathVariable Long id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+
+        try {
+            String filePath = permitActionService.uploadDocument(id, file);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Document uploaded successfully");
+            response.put("path", filePath);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to upload document", e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "success", false,
+                    "message", "Failed to upload document: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * View/Download document
+     * GET /api/permits/{id}/document
+     */
+    @GetMapping("/{id}/document")
+    public ResponseEntity<org.springframework.core.io.Resource> viewDocument(@PathVariable Long id) {
+        try {
+            WorkingPermit permit = permitRetrievalService.getPermitById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Permit not found"));
+
+            String documentPath = permit.getWorkOrderDocument();
+            if (documentPath == null || documentPath.isEmpty()) {
+                throw new ResourceNotFoundException("No document attached to this permit");
+            }
+
+            java.nio.file.Path path = java.nio.file.Paths.get(documentPath);
+            org.springframework.core.io.Resource resource = new org.springframework.core.io.UrlResource(path.toUri());
+
+            if (resource.exists() || resource.isReadable()) {
+                String contentType = "application/octet-stream";
+                try {
+                    contentType = java.nio.file.Files.probeContentType(path);
+                } catch (java.io.IOException ex) {
+                    log.warn("Could not determine file type.");
+                }
+
+                return ResponseEntity.ok()
+                        .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
+                        .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                                "inline; filename=\"" + resource.getFilename() + "\"")
+                        .body(resource);
+            } else {
+                throw new RuntimeException("Could not read file: " + documentPath);
+            }
+        } catch (Exception e) {
+            log.error("Failed to read document", e);
+            throw new RuntimeException("Could not read document", e);
+        }
     }
 }

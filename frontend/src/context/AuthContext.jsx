@@ -62,6 +62,9 @@ export const AuthProvider = ({ children }) => {
     return !!user?.accessToken;
   }, [user]);
 
+  // Check if user is any kind of administrator
+  const isAdministrator = user?.role?.startsWith('ADMINISTRATOR_') || user?.role === 'ADMIN';
+
   // Context value
   const value = {
     user,
@@ -76,6 +79,11 @@ export const AuthProvider = ({ children }) => {
     isManager: user?.role === 'MANAGER',
     isSecurity: user?.role === 'SECURITY',
     isAdmin: user?.role === 'ADMIN',
+    isAdministratorODC: user?.role === 'ADMINISTRATOR_ODC',
+    isAdministratorInfra: user?.role === 'ADMINISTRATOR_INFRA',
+    isAdministratorNetwork: user?.role === 'ADMINISTRATOR_NETWORK',
+    isAdministrator, // Any administrator role
+    userTeam: user?.team,
   };
 
   return (

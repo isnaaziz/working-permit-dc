@@ -73,6 +73,7 @@ public class AuthController {
         response.put("fullName", user.getFullName());
         response.put("email", user.getEmail());
         response.put("role", user.getRole().name());
+        response.put("team", user.getTeam() != null ? user.getTeam().name() : null);
         response.put("company", user.getCompany());
         response.put("phoneNumber", user.getPhoneNumber());
 

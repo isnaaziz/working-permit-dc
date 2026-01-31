@@ -45,10 +45,17 @@ const api = {
   // Generic POST request
   async post(endpoint, data) {
     try {
+      const isFormData = data instanceof FormData;
+      const headers = this.getHeaders();
+
+      if (isFormData) {
+        delete headers['Content-Type']; // Let browser set multipart/form-data with boundary
+      }
+
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify(data),
+        headers: headers,
+        body: isFormData ? data : JSON.stringify(data),
       });
       this.handleResponse(response);
 

@@ -9,6 +9,7 @@ export const authService = {
         ...result,
         id: result.userId,
         token: result.accessToken,
+        team: result.team, // Include team from response
       };
       localStorage.setItem('user', JSON.stringify(user));
       return user;
@@ -44,8 +45,18 @@ export const authService = {
     return user ? user.role : null;
   },
 
+  getTeam() {
+    const user = this.getUser();
+    return user ? user.team : null;
+  },
+
   hasRole(role) {
     return this.getRole() === role;
+  },
+
+  isAdministrator() {
+    const role = this.getRole();
+    return role && (role === 'ADMIN' || role.startsWith('ADMINISTRATOR_'));
   },
 };
 

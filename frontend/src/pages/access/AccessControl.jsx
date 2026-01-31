@@ -1,14 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
 import { Card, Button, Input, Badge } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { useAccess } from '../../hooks';
-import { permitService } from '../../services';
+import { permitService, accessService } from '../../services';
+import QrScanner from 'react-qr-barcode-scanner';
 
 const AccessControl = () => {
   const { user } = useAuth();
   const { verify, checkIn, checkOut, fetchLogs, loading: accessLoading } = useAccess();
+  const scanInputRef = useRef(null);
+  const scannerRef = useRef(null);
+  const html5QrCodeRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState('scan');
+  const [scanMode, setScanMode] = useState('camera'); // 'camera', 'barcode' or 'manual'
+  const [scanInput, setScanInput] = useState('');
   const [qrCode, setQrCode] = useState('');
   const [otp, setOtp] = useState('');
   const [verificationResult, setVerificationResult] = useState(null);
@@ -16,13 +23,116 @@ const AccessControl = () => {
   const [loadingVisitors, setLoadingVisitors] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
+  const [scannerStatus, setScannerStatus] = useState({ status: 'ONLINE', scannerType: 'BARCODE_QR' });
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
+
+  // Initialize camera scanner
+  useEffect(() => {
+    if (scanMode === 'camera' && activeTab === 'scan' && !verificationResult) {
+      startCameraScanner();
+    } else {
+      stopCameraScanner();
+    }
+
+    return () => {
+      stopCameraScanner();
+    };
+  }, [scanMode, activeTab, verificationResult]);
+
+  const startCameraScanner = async () => {
+    try {
+      setCameraError(null);
+      
+      // Wait for DOM element to be ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const scannerElement = document.getElementById('qr-reader');
+      if (!scannerElement) {
+        console.error('Scanner element not found');
+        return;
+      }
+
+      // Stop existing scanner if any
+      if (html5QrCodeRef.current) {
+        try {
+          await html5QrCodeRef.current.stop();
+        } catch (e) {
+          // Ignore stop errors
+        }
+      }
+
+      html5QrCodeRef.current = new Html5Qrcode('qr-reader');
+      
+      await html5QrCodeRef.current.start(
+        { facingMode: 'environment' }, // Use back camera on mobile
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+        },
+        async (decodedText) => {
+          // On successful scan
+          console.log('Scanned:', decodedText);
+          await stopCameraScanner();
+          await processBarcodeOTP(decodedText);
+        },
+        (errorMessage) => {
+          // Scan error - ignore, it's normal when no code is visible
+        }
+      );
+      
+      setCameraActive(true);
+    } catch (err) {
+      console.error('Camera error:', err);
+      setCameraError(err.message || 'Gagal mengakses kamera. Pastikan izin kamera diberikan.');
+      setCameraActive(false);
+    }
+  };
+
+  const stopCameraScanner = async () => {
+    if (html5QrCodeRef.current) {
+      try {
+        const state = html5QrCodeRef.current.getState();
+        if (state === 2) { // SCANNING state
+          await html5QrCodeRef.current.stop();
+        }
+      } catch (e) {
+        // Ignore errors when stopping
+      }
+      html5QrCodeRef.current = null;
+    }
+    setCameraActive(false);
+  };
+
+  // Focus on scan input when in barcode mode
+  useEffect(() => {
+    if (scanMode === 'barcode' && scanInputRef.current) {
+      scanInputRef.current.focus();
+    }
+  }, [scanMode, activeTab]);
+
+  // Load scanner status
+  useEffect(() => {
+    const loadScannerStatus = async () => {
+      try {
+        const status = await accessService.getScannerStatus();
+        setScannerStatus(status);
+      } catch (err) {
+        console.error('Failed to load scanner status:', err);
+      }
+    };
+    loadScannerStatus();
+  }, []);
 
   // Load active visitors (checked-in but not checked-out)
   const loadActiveVisitors = async () => {
+    console.log('🔄 Loading active visitors...');
     setLoadingVisitors(true);
     try {
       // Get permits with ACTIVE status (checked in)
       const permits = await permitService.getByStatus('ACTIVE');
+      console.log('✅ Active permits loaded:', permits);
       const visitors = permits.map(permit => ({
         id: permit.id,
         name: permit.visitor?.fullName || 'Unknown',
@@ -32,9 +142,10 @@ const AccessControl = () => {
         area: permit.dataCenter?.replace('_', ' ') || permit.dataCenter,
         permitData: permit
       }));
+      console.log('👥 Mapped visitors:', visitors);
       setActiveVisitors(visitors);
     } catch (err) {
-      console.error('Failed to load active visitors:', err);
+      console.error('❌ Failed to load active visitors:', err);
     } finally {
       setLoadingVisitors(false);
     }
@@ -43,6 +154,52 @@ const AccessControl = () => {
   useEffect(() => {
     loadActiveVisitors();
   }, []);
+
+  // Handle barcode scan (when scanner sends data ending with Enter key)
+  const handleBarcodeScan = async (e) => {
+    if (e.key === 'Enter' && scanInput.trim()) {
+      e.preventDefault();
+      await processBarcodeOTP(scanInput.trim());
+    }
+  };
+
+  // Process scanned barcode/OTP code
+  const processBarcodeOTP = async (scannedCode) => {
+    setError(null);
+    setProcessing(true);
+
+    try {
+      const result = await accessService.scanOTP(scannedCode);
+
+      if (result && result.success) {
+        setVerificationResult({
+          success: true,
+          permitId: result.permitId,
+          visitor: {
+            name: result.visitorName || 'Unknown',
+            company: result.company || '-',
+            permitId: result.permitNumber,
+            purpose: '-',
+            pic: '-',
+            dataCenter: result.dataCenter || '-',
+          }
+        });
+        setScanInput('');
+      } else {
+        setError(result?.message || 'Kode OTP tidak valid');
+        setScanInput('');
+        // Re-focus for next scan
+        if (scanInputRef.current) {
+          scanInputRef.current.focus();
+        }
+      }
+    } catch (err) {
+      setError(err.message || 'Verifikasi gagal');
+      setScanInput('');
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   const handleVerify = async () => {
     if (!qrCode.trim()) {
@@ -85,7 +242,7 @@ const AccessControl = () => {
   };
 
   const handleCheckIn = async () => {
-    if (!verificationResult?.permit?.id) {
+    if (!verificationResult?.permitId && !verificationResult?.permit?.id) {
       setError('No permit to check in');
       return;
     }
@@ -94,17 +251,39 @@ const AccessControl = () => {
     setError(null);
 
     try {
-      await checkIn({
-        qrCodeData: qrCode,
-        otpCode: otp,
-        location: 'Main Entrance'
-      });
-
-      alert('Check-in successful!');
-      setVerificationResult(null);
-      setQrCode('');
-      setOtp('');
-      loadActiveVisitors(); // Refresh active visitors list
+      // Use scan check-in if we have permitId from barcode scan
+      if (verificationResult?.permitId) {
+        console.log('🔍 Performing scan check-in for permitId:', verificationResult.permitId);
+        const result = await accessService.scanCheckIn(verificationResult.permitId, '');
+        console.log('✅ Check-in result:', result);
+        if (result.success) {
+          alert(`Check-in berhasil!\n\nVisitor: ${result.visitorName}\nPermit: ${result.permitNumber}`);
+          setVerificationResult(null);
+          setScanInput('');
+          setQrCode('');
+          setOtp('');
+          console.log('🔄 Reloading active visitors after check-in...');
+          await loadActiveVisitors();
+          // Re-focus for next scan
+          if (scanInputRef.current) {
+            scanInputRef.current.focus();
+          }
+        } else {
+          setError(result.message || 'Check-in gagal');
+        }
+      } else {
+        // Fallback to original check-in
+        await checkIn({
+          qrCodeData: qrCode,
+          otpCode: otp,
+          location: 'Main Entrance'
+        });
+        alert('Check-in successful!');
+        setVerificationResult(null);
+        setQrCode('');
+        setOtp('');
+        loadActiveVisitors();
+      }
     } catch (err) {
       setError(err.message || 'Check-in failed');
     } finally {
@@ -175,14 +354,64 @@ const AccessControl = () => {
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Scan Section */}
           <Card>
-            <h3 className="font-bold text-dark-600 mb-6 flex items-center gap-2">
-              <i className="ri-qr-scan-2-line text-primary-600"></i>
-              Verify Visitor
-            </h3>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold text-dark-600 flex items-center gap-2">
+                <i className="ri-barcode-box-line text-primary-600"></i>
+                Scan Barcode OTP
+              </h3>
+              {/* Scanner Status */}
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs ${
+                scannerStatus.status === 'ONLINE' 
+                  ? 'bg-success/10 text-success' 
+                  : 'bg-danger/10 text-danger'
+              }`}>
+                <div className={`w-2 h-2 rounded-full animate-pulse ${
+                  scannerStatus.status === 'ONLINE' ? 'bg-success' : 'bg-danger'
+                }`}></div>
+                Scanner {scannerStatus.status === 'ONLINE' ? 'Aktif' : 'Offline'}
+              </div>
+            </div>
+
+            {/* Scan Mode Toggle */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setScanMode('camera')}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                  scanMode === 'camera'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <i className="ri-camera-line"></i>
+                Kamera
+              </button>
+              <button
+                onClick={() => setScanMode('barcode')}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                  scanMode === 'barcode'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <i className="ri-barcode-line"></i>
+                Scanner
+              </button>
+              <button
+                onClick={() => setScanMode('manual')}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                  scanMode === 'manual'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <i className="ri-keyboard-line"></i>
+                Input Manual
+              </button>
+            </div>
 
             {/* Error Message */}
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              <div className="mb-4 p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger text-sm">
                 <i className="ri-error-warning-line mr-2"></i>
                 {error}
               </div>
@@ -190,39 +419,186 @@ const AccessControl = () => {
 
             {!verificationResult ? (
               <div className="space-y-6">
-                {/* QR Scanner Placeholder */}
-                <div className="aspect-square max-w-xs mx-auto bg-gray-100 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-gray-300">
-                  <i className="ri-qr-scan-2-line text-6xl text-gray-300 mb-4"></i>
-                  <p className="text-gray-500 text-center">Position QR code here</p>
-                  <p className="text-xs text-gray-400 mt-1">or enter manually below</p>
-                </div>
+                {scanMode === 'camera' ? (
+                  // Camera Scan Mode
+                  <>
+                    <div className="relative">
+                      {/* Camera Error */}
+                      {cameraError && (
+                        <div className="mb-4 p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger text-sm">
+                          <i className="ri-error-warning-line mr-2"></i>
+                          {cameraError}
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="ml-4"
+                            onClick={startCameraScanner}
+                          >
+                            Coba Lagi
+                          </Button>
+                        </div>
+                      )}
 
-                <div className="text-center text-gray-400 text-sm">— OR —</div>
+                      {/* Camera View */}
+                      <div className="relative rounded-2xl overflow-hidden bg-black">
+                        <div 
+                          id="qr-reader" 
+                          className="w-full"
+                          style={{ minHeight: '300px' }}
+                        ></div>
+                        
+                        {!cameraActive && !cameraError && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
+                            <i className="ri-loader-4-line animate-spin text-4xl text-white mb-4"></i>
+                            <p className="text-white">Mengaktifkan kamera...</p>
+                          </div>
+                        )}
+                      </div>
 
-                <Input
-                  label="Permit ID / QR Code"
-                  placeholder="Enter permit ID (e.g., WP-2026-0001)"
-                  value={qrCode}
-                  onChange={(e) => setQrCode(e.target.value)}
-                  icon={<i className="ri-qr-code-line"></i>}
-                />
+                      {/* Camera indicator */}
+                      {cameraActive && (
+                        <div className="absolute top-4 left-4 flex items-center gap-2 bg-danger text-white px-3 py-1 rounded-full text-xs">
+                          <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                          REC - Scanning...
+                        </div>
+                      )}
+                    </div>
 
-                <Input
-                  label="OTP Code"
-                  placeholder="Enter 6-digit OTP"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  icon={<i className="ri-lock-line"></i>}
-                />
+                    <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <i className="ri-camera-line text-primary-500 text-xl"></i>
+                        <div>
+                          <p className="text-sm text-primary-700 font-medium">Cara Scan dengan Kamera:</p>
+                          <ol className="text-xs text-primary-600 mt-1 list-decimal list-inside space-y-1">
+                            <li>Izinkan akses kamera saat diminta</li>
+                            <li>Arahkan kamera ke barcode/QR OTP dari email visitor</li>
+                            <li>Kode akan otomatis terbaca</li>
+                          </ol>
+                        </div>
+                      </div>
+                    </div>
 
-                <Button
-                  className="w-full"
-                  onClick={handleVerify}
-                  icon={<i className="ri-shield-check-line"></i>}
-                  disabled={processing}
-                >
-                  {processing ? 'Verifying...' : 'Verify'}
-                </Button>
+                    {/* Manual OTP input as fallback */}
+                    <div className="text-center text-gray-400 text-sm">— atau ketik kode OTP —</div>
+
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        placeholder="Masukkan 6 digit OTP..."
+                        value={scanInput}
+                        onChange={(e) => setScanInput(e.target.value)}
+                        maxLength={6}
+                        className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-lg tracking-widest text-center"
+                      />
+                      <Button
+                        onClick={() => scanInput && processBarcodeOTP(scanInput)}
+                        disabled={processing || !scanInput.trim()}
+                      >
+                        {processing ? (
+                          <i className="ri-loader-4-line animate-spin"></i>
+                        ) : (
+                          <i className="ri-checkbox-circle-line"></i>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                ) : scanMode === 'barcode' ? (
+                  // Barcode Scan Mode
+                  <>
+                    <div className="aspect-video max-w-md mx-auto bg-linear-to-br from-primary-50 to-secondary-50 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-primary-300 relative">
+                      <i className="ri-barcode-box-line text-6xl text-primary-400 mb-4"></i>
+                      <p className="text-primary-600 font-medium text-center">Arahkan Scanner ke Barcode OTP</p>
+                      <p className="text-xs text-gray-500 mt-2">Kode akan otomatis terbaca</p>
+                      
+                      {/* Hidden input for barcode scanner */}
+                      <input
+                        ref={scanInputRef}
+                        type="text"
+                        value={scanInput}
+                        onChange={(e) => setScanInput(e.target.value)}
+                        onKeyDown={handleBarcodeScan}
+                        className="absolute inset-0 opacity-0 cursor-default"
+                        autoFocus
+                        placeholder="Scan barcode..."
+                      />
+                    </div>
+
+                    <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <i className="ri-information-line text-primary-500 text-xl"></i>
+                        <div>
+                          <p className="text-sm text-primary-700 font-medium">Cara Scan Barcode:</p>
+                          <ol className="text-xs text-primary-600 mt-1 list-decimal list-inside space-y-1">
+                            <li>Klik area scan di atas untuk mengaktifkan</li>
+                            <li>Arahkan scanner barcode ke kode OTP dari email visitor</li>
+                            <li>Data akan otomatis terbaca dan diverifikasi</li>
+                          </ol>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Manual OTP input as fallback */}
+                    <div className="text-center text-gray-400 text-sm">— atau ketik kode OTP —</div>
+
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        placeholder="Masukkan 6 digit OTP..."
+                        value={scanInput}
+                        onChange={(e) => setScanInput(e.target.value)}
+                        maxLength={6}
+                        className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-lg tracking-widest text-center"
+                      />
+                      <Button
+                        onClick={() => scanInput && processBarcodeOTP(scanInput)}
+                        disabled={processing || !scanInput.trim()}
+                      >
+                        {processing ? (
+                          <i className="ri-loader-4-line animate-spin"></i>
+                        ) : (
+                          <i className="ri-checkbox-circle-line"></i>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  // Manual Input Mode (Original)
+                  <>
+                    {/* QR Scanner Placeholder */}
+                    <div className="aspect-square max-w-xs mx-auto bg-gray-100 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-gray-300">
+                      <i className="ri-qr-scan-2-line text-6xl text-gray-300 mb-4"></i>
+                      <p className="text-gray-500 text-center">Position QR code here</p>
+                      <p className="text-xs text-gray-400 mt-1">or enter manually below</p>
+                    </div>
+
+                    <div className="text-center text-gray-400 text-sm">— OR —</div>
+
+                    <Input
+                      label="Permit ID / QR Code"
+                      placeholder="Enter permit ID (e.g., WP-2026-0001)"
+                      value={qrCode}
+                      onChange={(e) => setQrCode(e.target.value)}
+                      icon={<i className="ri-qr-code-line"></i>}
+                    />
+
+                    <Input
+                      label="OTP Code"
+                      placeholder="Enter 6-digit OTP"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      icon={<i className="ri-lock-line"></i>}
+                    />
+
+                    <Button
+                      className="w-full"
+                      onClick={handleVerify}
+                      icon={<i className="ri-shield-check-line"></i>}
+                      disabled={processing}
+                    >
+                      {processing ? 'Verifying...' : 'Verify'}
+                    </Button>
+                  </>
+                )}
               </div>
             ) : (
               <div className="space-y-6">
@@ -284,18 +660,18 @@ const AccessControl = () => {
           </Card>
 
           {/* Instructions */}
-          <Card className="bg-gradient-to-br from-primary-50 to-secondary-50">
+          <Card className="bg-linear-to-br from-primary-50 to-secondary-50">
             <h3 className="font-bold text-dark-600 mb-4">Check-in Instructions</h3>
             <div className="space-y-4">
               {[
-                { step: 1, text: 'Ask visitor to show their QR code from email/app' },
-                { step: 2, text: 'Scan the QR code or enter the permit ID manually' },
-                { step: 3, text: 'Request the OTP code sent to visitor\'s phone/email' },
-                { step: 4, text: 'Verify identity matches the permit information' },
-                { step: 5, text: 'Issue temporary ID card after successful check-in' },
+                { step: 1, text: 'Minta visitor menunjukkan email dengan barcode OTP' },
+                { step: 2, text: 'Scan barcode menggunakan scanner atau ketik kode OTP 6 digit' },
+                { step: 3, text: 'Verifikasi data visitor yang tampil di layar' },
+                { step: 4, text: 'Klik tombol "Complete Check-in" jika data sesuai' },
+                { step: 5, text: 'Berikan ID card sementara kepada visitor' },
               ].map((item) => (
                 <div key={item.step} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold">
+                  <div className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center shrink-0 text-sm font-bold">
                     {item.step}
                   </div>
                   <p className="text-gray-600 pt-1">{item.text}</p>
@@ -326,7 +702,7 @@ const AccessControl = () => {
                   <div className="absolute top-0 right-0 w-2 h-full bg-success"></div>
 
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-success to-primary-500 flex items-center justify-center text-white font-bold">
+                    <div className="w-12 h-12 rounded-full bg-linear-to-br from-success to-primary-500 flex items-center justify-center text-white font-bold">
                       {visitor.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
                     </div>
                     <div>

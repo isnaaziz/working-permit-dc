@@ -19,15 +19,15 @@ import { Dashboard } from './pages/dashboard';
 import { PermitList, PermitForm, PermitDetail } from './pages/permits';
 
 // Approvals
-import { ApprovalList } from './pages/approvals';
+import { ApprovalList, ApprovalHistory } from './pages/approvals';
 
 // Access
-import { AccessControl, AccessLogs } from './pages/access';
+import { AccessControl, AccessLogs, CheckedInUsers } from './pages/access';
 
 // Mutasi Barang
 import MutasiBarangPage from './pages/mutasi';
 import MutasiBarangList from './pages/mutasi/MutasiBarangList.jsx';
-import MutasiBarangEdit from './pages/mutasi/MutasiBarangEdit.jsx';
+import MutasiBarangDetail from './pages/mutasi/MutasiBarangDetail.jsx';
 import MutasiBarangPDF from './pages/mutasi/MutasiBarangPDF.jsx';
 
 // Placeholder for pages under construction
@@ -75,7 +75,7 @@ function App() {
             {/* Mutasi Barang - All authenticated users */}
             <Route path="mutasi-barang" element={<MutasiBarangPage />} />
             <Route path="mutasi-barang/list" element={<MutasiBarangList />} />
-            <Route path="mutasi-barang/:id" element={<MutasiBarangEdit />} />
+            <Route path="mutasi-barang/:id" element={<MutasiBarangDetail />} />
             <Route path="mutasi-barang/:id/pdf" element={<MutasiBarangPDF />} />
             
             {/* Approvals - Only PIC, Manager, and Admin */}
@@ -87,7 +87,11 @@ function App() {
                 </PrivateRoute>
               }
             />
-            <Route path="approvals/history" element={<PlaceholderPage title="Approval History" />} />
+            <Route path="approvals/history" element={
+                <PrivateRoute allowedRoles={['PIC', 'MANAGER', 'ADMIN']}>
+                  <ApprovalHistory />
+                </PrivateRoute>
+              } />
             
             {/* Access Control - Only Security and Admin */}
             <Route
@@ -103,6 +107,14 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={['SECURITY', 'ADMIN', 'MANAGER']}>
                   <AccessLogs />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="checked-in"
+              element={
+                <PrivateRoute allowedRoles={['SECURITY', 'ADMIN', 'MANAGER']}>
+                  <CheckedInUsers />
                 </PrivateRoute>
               }
             />

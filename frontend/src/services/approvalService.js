@@ -21,6 +21,14 @@ export const approvalService = {
   async getByPermit(permitId) {
     return await api.get(`/approvals/permit/${permitId}`);
   },
+  
+  async getHistory(userId) {
+    return await api.get(`/approvals/history/${userId}`);
+  },
+  
+  async getAllByUser(userId) {
+    return await api.get(`/approvals/user/${userId}/all`);
+  },
 };
 
 export default approvalService;

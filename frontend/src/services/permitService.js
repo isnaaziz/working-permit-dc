@@ -45,6 +45,23 @@ export const permitService = {
   async regenerateOTP(id) {
     return await api.post(`/permits/${id}/regenerate-otp`, {});
   },
+
+  async uploadDocument(id, file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return await api.post(`/permits/${id}/upload`, formData);
+  },
+
+  async viewDocument(id) {
+    const response = await fetch(`${api.defaults?.baseURL || (import.meta.env.VITE_API_URL || 'http://localhost:8080/api')}/permits/${id}/document`, {
+      headers: api.getHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch document');
+    }
+    return await response.blob();
+  },
 };
 
 export default permitService;

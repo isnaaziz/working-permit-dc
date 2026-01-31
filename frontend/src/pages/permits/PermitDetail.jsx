@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, Button, Badge } from '../../components/ui';
 import { usePermits } from '../../hooks';
+import { permitService } from '../../services/permitService';
 
 const PermitDetail = () => {
   const { id } = useParams();
@@ -161,6 +162,28 @@ const PermitDetail = () => {
                 </div>
               </div>
             </div>
+
+            {/* Document Download - Only for PIC, Manager, Security, or Owner */}
+            {permit.workOrderDocument && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <label className="text-sm text-gray-500 block mb-2">Attached Document</label>
+                <button
+                  onClick={async () => {
+                    try {
+                      const blob = await permitService.viewDocument(permit.id);
+                      const url = window.URL.createObjectURL(blob);
+                      window.open(url, '_blank');
+                    } catch (e) {
+                      alert('Failed to view document');
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-dark-600 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <i className="ri-file-text-line text-primary-600"></i>
+                  View Supporting Document
+                </button>
+              </div>
+            )}
           </Card>
 
           {/* Schedule & Location */}
@@ -330,52 +353,54 @@ const PermitDetail = () => {
             )}
           </Card>
         </div>
-      </div>
+      </div >
 
       {/* QR Code Modal */}
-      {showQRModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 print:hidden">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in zoom-in duration-200">
-            <button
-              onClick={() => setShowQRModal(false)}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <i className="ri-close-line text-xl"></i>
-            </button>
+      {
+        showQRModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 print:hidden">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in zoom-in duration-200">
+              <button
+                onClick={() => setShowQRModal(false)}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <i className="ri-close-line text-xl"></i>
+              </button>
 
-            <div className="text-center pt-4">
-              <h3 className="text-xl font-bold text-dark-600 mb-2">Access QR Code</h3>
-              <p className="text-gray-500 text-sm mb-6">Scan this code at the security checkpoint</p>
+              <div className="text-center pt-4">
+                <h3 className="text-xl font-bold text-dark-600 mb-2">Access QR Code</h3>
+                <p className="text-gray-500 text-sm mb-6">Scan this code at the security checkpoint</p>
 
-              <div className="bg-white p-4 rounded-xl border-2 border-dashed border-gray-200 inline-block mb-6 relative group">
-                <img
-                  src={permit.qrCodeBase64 ? `data:image/png;base64,${permit.qrCodeBase64}` : permit.qrCode}
-                  alt="QR Code"
-                  className="w-64 h-64 object-contain"
-                />
-              </div>
-
-              {(permit.otp || permit.otpCode) && (
-                <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-1">OTP Verification Code</p>
-                  <p className="text-4xl font-mono font-bold text-primary-600 tracking-[0.2em]">{permit.otp || permit.otpCode}</p>
+                <div className="bg-white p-4 rounded-xl border-2 border-dashed border-gray-200 inline-block mb-6 relative group">
+                  <img
+                    src={permit.qrCodeBase64 ? `data:image/png;base64,${permit.qrCodeBase64}` : permit.qrCode}
+                    alt="QR Code"
+                    className="w-64 h-64 object-contain"
+                  />
                 </div>
-              )}
 
-              <p className="text-xs text-center text-gray-400">
-                This QR code is valid for: <br />
-                <span className="font-medium text-gray-600">{formatDate(permit.scheduledStartTime)} - {formatDate(permit.scheduledEndTime)}</span>
-              </p>
+                {(permit.otp || permit.otpCode) && (
+                  <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                    <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-1">OTP Verification Code</p>
+                    <p className="text-4xl font-mono font-bold text-primary-600 tracking-[0.2em]">{permit.otp || permit.otpCode}</p>
+                  </div>
+                )}
 
-              <div className="mt-6 flex gap-3">
-                <Button variant="outline" className="flex-1" onClick={() => setShowQRModal(false)}>Close</Button>
-                <Button className="flex-1" icon={<i className="ri-download-line"></i>}>Save Image</Button>
+                <p className="text-xs text-center text-gray-400">
+                  This QR code is valid for: <br />
+                  <span className="font-medium text-gray-600">{formatDate(permit.scheduledStartTime)} - {formatDate(permit.scheduledEndTime)}</span>
+                </p>
+
+                <div className="mt-6 flex gap-3">
+                  <Button variant="outline" className="flex-1" onClick={() => setShowQRModal(false)}>Close</Button>
+                  <Button className="flex-1" icon={<i className="ri-download-line"></i>}>Save Image</Button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 

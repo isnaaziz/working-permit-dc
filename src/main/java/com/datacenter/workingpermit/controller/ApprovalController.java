@@ -112,4 +112,24 @@ public class ApprovalController {
         Approval approval = approvalRetrievalService.getApprovalById(id);
         return ResponseEntity.ok(approval);
     }
+
+    /**
+     * Get approval history for a user
+     * GET /api/approvals/history/{userId}
+     */
+    @GetMapping("/history/{userId}")
+    public ResponseEntity<List<Approval>> getApprovalHistory(@PathVariable Long userId) {
+        List<Approval> history = approvalRetrievalService.getApprovalHistory(userId);
+        return ResponseEntity.ok(history);
+    }
+
+    /**
+     * Get all approvals by a user (any status)
+     * GET /api/approvals/user/{userId}/all
+     */
+    @GetMapping("/user/{userId}/all")
+    public ResponseEntity<List<Approval>> getAllApprovalsByUser(@PathVariable Long userId) {
+        List<Approval> approvals = approvalRetrievalService.getAllApprovalsByUser(userId);
+        return ResponseEntity.ok(approvals);
+    }
 }

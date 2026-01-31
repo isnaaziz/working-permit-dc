@@ -64,42 +64,44 @@ public class PermitRetrievalService {
      * Get all permits for a visitor
      */
     public List<WorkingPermit> getPermitsByVisitor(User visitor) {
-        return permitRepository.findByVisitor(visitor);
+        return permitRepository.findByVisitorOrderByCreatedAtDesc(visitor);
     }
 
     /**
      * Get all permits for a PIC
      */
     public List<WorkingPermit> getPermitsByPIC(User pic) {
-        return permitRepository.findByPic(pic);
+        return permitRepository.findByPicOrderByCreatedAtDesc(pic);
     }
 
     /**
      * Get permits by status
      */
     public List<WorkingPermit> getPermitsByStatus(WorkingPermit.PermitStatus status) {
-        return permitRepository.findByStatus(status);
+        // Use the query with FETCH to avoid lazy loading issues
+        return permitRepository.findByStatusWithDetails(status);
     }
 
     /**
      * Get pending permits for PIC
      */
     public List<WorkingPermit> getPendingPermitsForPIC(User pic) {
-        return permitRepository.findByPicAndStatus(pic, WorkingPermit.PermitStatus.PENDING_PIC);
+        return permitRepository.findByPicAndStatusOrderByCreatedAtDesc(pic, WorkingPermit.PermitStatus.PENDING_PIC);
     }
 
     /**
      * Get pending permits for Manager approval
      */
     public List<WorkingPermit> getPendingPermitsForManager() {
-        return permitRepository.findByStatus(WorkingPermit.PermitStatus.PENDING_MANAGER);
+        return permitRepository.findByStatusOrderByCreatedAtDesc(WorkingPermit.PermitStatus.PENDING_MANAGER);
     }
 
     /**
      * Get all permits
      */
     public List<WorkingPermit> getAllPermits() {
-        return permitRepository.findAll();
+        return permitRepository.findAll(org.springframework.data.domain.Sort
+                .by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
     }
 
     /**
@@ -110,7 +112,7 @@ public class PermitRetrievalService {
             throw new IllegalArgumentException("Visitor ID cannot be null");
         User visitor = userRepository.findById(visitorId)
                 .orElseThrow(() -> new RuntimeException("Visitor not found"));
-        return permitRepository.findByVisitor(visitor);
+        return permitRepository.findByVisitorOrderByCreatedAtDesc(visitor);
     }
 
     /**
@@ -121,6 +123,6 @@ public class PermitRetrievalService {
             throw new IllegalArgumentException("PIC ID cannot be null");
         User pic = userRepository.findById(picId)
                 .orElseThrow(() -> new RuntimeException("PIC not found"));
-        return permitRepository.findByPic(pic);
+        return permitRepository.findByPicOrderByCreatedAtDesc(pic);
     }
 }

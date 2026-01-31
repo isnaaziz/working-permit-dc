@@ -6,7 +6,7 @@ import { useNotifications } from '../../hooks';
 const DashboardSidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isVisitor, isPIC, isManager, isSecurity, isAdmin } = useAuth();
+  const { user, logout, isVisitor, isPIC, isManager, isSecurity, isAdmin, isAdministrator, isAdministratorODC, isAdministratorInfra, isAdministratorNetwork } = useAuth();
 
   // Build menu items based on user role
   const getMenuItems = () => {
@@ -22,15 +22,15 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
     };
     
     // Visitor can see their permits and create new
-    if (isVisitor || isAdmin) {
+    if (isVisitor || isAdmin || isAdministrator) {
       mainMenu.items.push(
         { name: 'My Permits', icon: 'ri-file-list-3-line', path: '/dashboard/permits' },
         { name: 'New Request', icon: 'ri-add-circle-line', path: '/dashboard/permits/new' }
       );
     }
     
-    // PIC/Manager can see permits they manage
-    if (isPIC || isManager) {
+    // PIC/Manager/Administrator can see permits they manage
+    if (isPIC || isManager || isAdministratorODC || isAdministratorInfra || isAdministratorNetwork) {
       mainMenu.items.push(
         { name: 'Permits', icon: 'ri-file-list-3-line', path: '/dashboard/permits' }
       );
@@ -38,8 +38,8 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
     
     items.push(mainMenu);
     
-    // Approval Menu - Only PIC, Manager, Admin
-    if (isPIC || isManager || isAdmin) {
+    // Approval Menu - Only PIC, Manager, Admin, and Administrators
+    if (isPIC || isManager || isAdmin || isAdministrator) {
       items.push({
         title: 'Approval',
         items: [
@@ -50,11 +50,12 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
     }
     
     // Access Control - Only Security, Admin
-    if (isSecurity || isAdmin) {
+    if (isSecurity || isAdmin || isAdministrator) {
       items.push({
         title: 'Access Control',
         items: [
           { name: 'Check-in/Out', icon: 'ri-qr-scan-2-line', path: '/dashboard/access' },
+          { name: 'Visitor Aktif', icon: 'ri-user-follow-line', path: '/dashboard/checked-in' },
           { name: 'Access Logs', icon: 'ri-file-text-line', path: '/dashboard/logs' },
         ]
       });
@@ -65,6 +66,7 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       items.push({
         title: 'Reports',
         items: [
+          { name: 'Visitor Aktif', icon: 'ri-user-follow-line', path: '/dashboard/checked-in' },
           { name: 'Access Logs', icon: 'ri-file-text-line', path: '/dashboard/logs' },
         ]
       });
@@ -100,7 +102,28 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
   // Get role display name
   const getRoleDisplay = () => {
     const role = user?.role || user?.roles?.[0] || 'USER';
-    return role.charAt(0) + role.slice(1).toLowerCase();
+    const roleDisplayMap = {
+      'VISITOR': 'Visitor',
+      'PIC': 'PIC',
+      'MANAGER': 'Manager',
+      'SECURITY': 'Security',
+      'ADMIN': 'Admin',
+      'ADMINISTRATOR_ODC': 'Admin ODC',
+      'ADMINISTRATOR_INFRA': 'Admin INFRA',
+      'ADMINISTRATOR_NETWORK': 'Admin Network',
+    };
+    return roleDisplayMap[role] || role.charAt(0) + role.slice(1).toLowerCase();
+  };
+
+  // Get team display name
+  const getTeamDisplay = () => {
+    const teamMap = {
+      'TIM_ODC': 'Tim ODC',
+      'TIM_INFRA': 'Tim INFRA',
+      'TIM_NETWORK': 'Tim Network',
+      'TIM_SECURITY': 'Tim Security',
+    };
+    return user?.team ? teamMap[user.team] || user.team : null;
   };
 
   return (
@@ -124,7 +147,7 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
         {/* Logo */}
         <div className="h-20 flex items-center justify-between px-6 border-b border-dark-500">
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-linear-to-br from-primary-500 to-secondary-500 rounded-xl flex items-center justify-center">
               <i className="ri-server-line text-white text-xl"></i>
             </div>
             <span className="text-xl font-bold">
@@ -174,7 +197,7 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
         {/* User & Logout */}
         <div className="p-4 border-t border-dark-500">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-dark-500 mb-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent-hover flex items-center justify-center text-white font-bold">
+            <div className="w-10 h-10 rounded-full bg-linear-to-br from-accent to-accent-hover flex items-center justify-center text-white font-bold">
               {getUserInitials()}
             </div>
             <div className="flex-1 min-w-0">
@@ -245,7 +268,7 @@ const DashboardHeader = ({ onMenuClick }) => {
           >
             <i className="ri-notification-3-line text-xl"></i>
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-danger text-white text-xs font-bold px-1.5 rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 min-w-5 h-5 bg-danger text-white text-xs font-bold px-1.5 rounded-full flex items-center justify-center">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -283,7 +306,7 @@ const DashboardHeader = ({ onMenuClick }) => {
 
         {/* Profile */}
         <button className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-bold text-sm">
+          <div className="w-9 h-9 rounded-full bg-linear-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-bold text-sm">
             {getUserInitials()}
           </div>
           <i className="ri-arrow-down-s-line text-gray-400 hidden md:block"></i>

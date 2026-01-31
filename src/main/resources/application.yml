@@ -2,9 +2,15 @@ spring:
   application:
     name: Data Center Working Permit System
 
+  # File Upload Configuration
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   # Database Configuration
   datasource:
-    url: jdbc:h2:mem:workingpermitdb
+    url: jdbc:h2:file:./data/workingpermitdb;AUTO_SERVER=TRUE;IFEXISTS=FALSE
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -12,7 +18,7 @@ spring:
   # JPA Configuration
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
@@ -62,6 +68,10 @@ app:
     width: 300
     height: 300
 
+  # Email Configuration
+  email:
+    enabled: ${EMAIL_ENABLED:true}
+
   # SMS Configuration (implement with provider like Twilio)
   sms:
     enabled: false
@@ -69,6 +79,13 @@ app:
     account-sid: ${TWILIO_ACCOUNT_SID:}
     auth-token: ${TWILIO_AUTH_TOKEN:}
     from-number: ${TWILIO_FROM_NUMBER:}
+
+  # Camera/Facial Recognition Configuration
+  camera:
+    enabled: ${CAMERA_ENABLED:true}
+    api-url: ${CAMERA_API_URL:http://localhost:9000/api/camera}
+    verification-timeout: 300 # 5 minutes in seconds
+    min-confidence: 0.85 # Minimum confidence for face match
 
 # Server Configuration
 server:
