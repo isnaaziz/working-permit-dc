@@ -5,63 +5,83 @@ title Activity Diagram - Login & Register (Semua Role)
 start
 :Buka Aplikasi;
 
-if (Sudah punya akun?) then (Ya)
-  :Pilih Menu Login;
-  :Masukkan Username;
-  :Masukkan Password;
+if (Sudah punya akun?) then (Ya - LOGIN)
   
-  |Sistem|
-  :Validasi Kredensial;
-  
-  if (Kredensial Valid?) then (Ya)
-    :Generate JWT Token;
-    :Load Data Pengguna;
-    :Identifikasi Role;
+  partition "Proses Login" {
+    |Pengguna|
+    :Pilih Menu Login;
+    :Masukkan Username;
+    :Masukkan Password;
+    :Submit Form;
     
-    |Pengguna|
-    :Redirect ke Dashboard\nSesuai Role;
-    stop
-  else (Tidak)
-    |Pengguna|
-    :Tampilkan Pesan Error\n"Username atau Password Salah";
-    stop
-  endif
-  
-else (Tidak)
-  |Pengguna|
-  :Pilih Menu Register;
-  :Isi Form Registrasi:
-  - Nama Lengkap
-  - Email
-  - No. Telepon
-  - Username
-  - Password
-  - Konfirmasi Password;
-  
-  |Sistem|
-  :Validasi Data:
-  - Cek Email Duplikat
-  - Cek Username Duplikat
-  - Validasi Format Email
-  - Validasi Format No. Telepon
-  - Validasi Kekuatan Password
-  - Validasi Password Match;
-  
-  if (Data Valid?) then (Ya)
-    :Enkripsi Password;
-    :Set Role = VISITOR;
-    :Simpan ke Database;
-    :Kirim Email Verifikasi;
+    |Sistem|
+    :Validasi Kredensial;
     
+    if (Kredensial Valid?) then (Ya)
+      :Generate JWT Token;
+      :Load Data Pengguna;
+      :Identifikasi Role;
+      
+      |Pengguna|
+      :Redirect ke Dashboard\nSesuai Role;
+      stop
+      
+    else (Tidak)
+      |Pengguna|
+      :Tampilkan Pesan Error\n"Username atau Password Salah";
+      stop
+    endif
+  }
+  
+else (Tidak - REGISTER)
+  
+  partition "Proses Registrasi" {
     |Pengguna|
-    :Tampilkan Pesan Sukses\n"Registrasi Berhasil";
-    :Redirect ke Login;
-    stop
-  else (Tidak)
-    |Pengguna|
-    :Tampilkan Pesan Error;
-    stop
-  endif
+    :Pilih Menu Register;
+    
+    :Isi Form Registrasi;
+    note right
+      - Nama Lengkap
+      - Email
+      - No. Telepon
+      - Username
+      - Password
+      - Konfirmasi Password
+    end note
+    
+    :Submit Form;
+    
+    |Sistem|
+    :Validasi Data;
+    note right
+      Validasi:
+      - Cek Email Duplikat
+      - Cek Username Duplikat
+      - Validasi Format Email
+      - Validasi Format No. Telepon
+      - Validasi Kekuatan Password
+      - Validasi Password Match
+    end note
+    
+    if (Data Valid?) then (Ya)
+      :Enkripsi Password;
+      :Set Role = VISITOR;
+      :Simpan ke Database;
+      :Kirim Email Verifikasi;
+      
+      |Pengguna|
+      :Tampilkan Pesan Sukses\n"Registrasi Berhasil!\nSilakan login.";
+      
+      :Redirect ke Halaman Login;
+      stop
+      
+    else (Tidak)
+      |Pengguna|
+      :Tampilkan Pesan Error\n(Detail validasi yang gagal);
+      stop
+    endif
+  }
+  
 endif
 
 @enduml
