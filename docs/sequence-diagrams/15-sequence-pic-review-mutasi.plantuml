@@ -1,0 +1,203 @@
+@startuml Sequence - PIC Review Mutasi
+title Sequence Diagram - PIC Review Mutasi Barang
+
+actor "PIC" as PIC
+participant "UI\nPIC Dashboard" as UI
+participant "MutasiController" as MutasiCtrl
+participant "MutasiService" as MutasiService
+participant "MutasiRepository" as MutasiRepo
+participant "PermitRepository" as PermitRepo
+participant "NotificationService" as NotifService
+participant "UserRepository" as UserRepo
+database "Database" as DB
+
+PIC -> UI: Login & buka Dashboard
+activate UI
+
+UI -> MutasiCtrl: GET /api/mutasi/pending-pic-review
+activate MutasiCtrl
+
+MutasiCtrl -> MutasiCtrl: Validasi JWT token\nExtract picId
+
+MutasiCtrl -> MutasiService: getMutasiByPIC(picId, status)
+activate MutasiService
+
+MutasiService -> MutasiRepo: findByPicIdAndStatus(picId, PENDING_PIC_REVIEW)
+activate MutasiRepo
+MutasiRepo -> DB: SELECT * FROM mutasi_barang\nWHERE pic_id = ?\nAND status = 'PENDING_PIC_REVIEW'\nORDER BY created_at DESC
+activate DB
+DB --> MutasiRepo: List<Mutasi>
+deactivate DB
+MutasiRepo --> MutasiService: List<Mutasi>
+deactivate MutasiRepo
+
+MutasiService --> MutasiCtrl: List<MutasiDTO>
+deactivate MutasiService
+
+MutasiCtrl --> UI: 200 OK\n{mutasiList}
+deactivate MutasiCtrl
+
+UI --> PIC: Tampilkan daftar mutasi\nmenunggu review
+
+PIC -> UI: Pilih mutasi untuk review
+
+UI -> MutasiCtrl: GET /api/mutasi/{mutasiId}
+activate MutasiCtrl
+
+MutasiCtrl -> MutasiService: getMutasiDetail(mutasiId)
+activate MutasiService
+
+MutasiService -> MutasiRepo: findById(mutasiId)
+activate MutasiRepo
+MutasiRepo -> DB: SELECT m.*, p.*, u.*\nFROM mutasi_barang m\nJOIN working_permits p ON m.permit_id = p.id\nJOIN users u ON m.visitor_id = u.id\nWHERE m.id = ?
+DB --> MutasiRepo: Mutasi with relations
+MutasiRepo --> MutasiService: MutasiDetail
+deactivate MutasiRepo
+
+MutasiService --> MutasiCtrl: MutasiDetailDTO
+deactivate MutasiService
+
+MutasiCtrl --> UI: 200 OK\n{mutasiDetail}
+deactivate MutasiCtrl
+
+UI --> PIC: Tampilkan detail lengkap:
+note right
+- Data Visitor
+- Permit terkait
+- Jenis & Nama Barang
+- Jumlah
+- Serial Number
+- Tujuan Mutasi
+- Alasan
+- Tanggal Rencana
+- Dokumen pendukung
+end note
+
+PIC -> PIC: Evaluasi permohonan
+
+alt PIC Approve
+    PIC -> UI: Klik "Approve"
+    PIC -> UI: Isi catatan PIC (opsional)
+    
+    UI -> MutasiCtrl: PUT /api/mutasi/{mutasiId}/pic-approve\n{catatanPIC}
+    activate MutasiCtrl
+    
+    MutasiCtrl -> MutasiCtrl: Validasi JWT & role
+    
+    MutasiCtrl -> MutasiService: approveMutasiByPIC(mutasiId, picId, catatan)
+    activate MutasiService
+    
+    MutasiService -> MutasiRepo: findById(mutasiId)
+    activate MutasiRepo
+    MutasiRepo -> DB: SELECT * FROM mutasi_barang WHERE id = ?
+    DB --> MutasiRepo: Mutasi
+    MutasiRepo --> MutasiService: Mutasi entity
+    deactivate MutasiRepo
+    
+    MutasiService -> MutasiService: Validasi:\n- Status = PENDING_PIC_REVIEW?\n- PIC authorized?
+    
+    MutasiService -> MutasiService: mutasi.setStatus(PIC_APPROVED)
+    MutasiService -> MutasiService: mutasi.setCatatanPIC(catatan)
+    MutasiService -> MutasiService: mutasi.setPicReviewedAt(now)
+    MutasiService -> MutasiService: mutasi.setPicReviewerId(picId)
+    
+    MutasiService -> MutasiRepo: save(mutasi)
+    MutasiRepo -> DB: UPDATE mutasi_barang\nSET status = 'PIC_APPROVED',\ncatatan_pic = ?,\npic_reviewed_at = ?,\npic_reviewer_id = ?\nWHERE id = ?
+    DB --> MutasiRepo: Updated
+    MutasiRepo --> MutasiService: Mutasi entity
+    
+    ' Kirim notifikasi ke Manager
+    MutasiService -> PermitRepo: findById(mutasi.getPermitId())
+    activate PermitRepo
+    PermitRepo -> DB: SELECT * FROM working_permits WHERE id = ?
+    DB --> PermitRepo: Permit
+    PermitRepo --> MutasiService: Permit entity
+    deactivate PermitRepo
+    
+    MutasiService -> NotifService: notifyManagerMutasi(mutasi, managerId)
+    activate NotifService
+    
+    NotifService -> UserRepo: findById(managerId)
+    activate UserRepo
+    UserRepo -> DB: SELECT * FROM users WHERE id = ?
+    DB --> UserRepo: Manager data
+    UserRepo --> NotifService: Manager entity
+    deactivate UserRepo
+    
+    NotifService -> NotifService: Build email:\n"Mutasi Barang Menunggu Approval\nPIC: [pic_name]\nBarang: [nama_barang]\nJumlah: [jumlah]"
+    NotifService -> NotifService: sendEmail(manager.email, content)
+    
+    NotifService -> DB: INSERT INTO notifications\n(user_id, type, message, ...)\nVALUES (manager_id, 'MUTASI_NEED_APPROVAL', ...)
+    
+    ' Notifikasi ke Visitor
+    NotifService -> NotifService: sendToVisitor(\n"Mutasi telah direview PIC\nMenunggu approval Manager")
+    NotifService -> DB: INSERT INTO notifications FOR visitor
+    
+    ' Notifikasi ke Security
+    NotifService -> NotifService: sendToSecurity(\n"Info: Mutasi barang akan datang")
+    NotifService -> DB: INSERT INTO notifications FOR security
+    
+    NotifService --> MutasiService: Notifications sent
+    deactivate NotifService
+    
+    MutasiService --> MutasiCtrl: ApprovalResponse\n{status: "SUCCESS", message}
+    deactivate MutasiService
+    
+    MutasiCtrl --> UI: 200 OK\n{response}
+    deactivate MutasiCtrl
+    
+    UI --> PIC: "Mutasi berhasil diapprove!\nNotifikasi terkirim ke Manager"
+    deactivate UI
+    
+else PIC Reject
+    PIC -> UI: Klik "Reject"
+    PIC -> UI: Isi alasan penolakan (WAJIB)
+    
+    UI -> MutasiCtrl: PUT /api/mutasi/{mutasiId}/pic-reject\n{alasanPenolakan}
+    activate MutasiCtrl
+    
+    MutasiCtrl -> MutasiService: rejectMutasiByPIC(mutasiId, picId, alasan)
+    activate MutasiService
+    
+    MutasiService -> MutasiRepo: findById(mutasiId)
+    MutasiRepo -> DB: SELECT * FROM mutasi_barang WHERE id = ?
+    DB --> MutasiRepo: Mutasi
+    MutasiRepo --> MutasiService: Mutasi entity
+    
+    MutasiService -> MutasiService: mutasi.setStatus(REJECTED_BY_PIC)
+    MutasiService -> MutasiService: mutasi.setAlasanPenolakan(alasan)
+    MutasiService -> MutasiService: mutasi.setPicReviewedAt(now)
+    
+    MutasiService -> MutasiRepo: save(mutasi)
+    MutasiRepo -> DB: UPDATE mutasi_barang\nSET status = 'REJECTED_BY_PIC',\nalasan_penolakan = ?,\npic_reviewed_at = ?\nWHERE id = ?
+    DB --> MutasiRepo: Updated
+    MutasiRepo --> MutasiService: Mutasi entity
+    
+    ' Kirim notifikasi ke Visitor
+    MutasiService -> NotifService: notifyVisitorRejection(mutasi, alasan)
+    activate NotifService
+    
+    NotifService -> UserRepo: findById(mutasi.getVisitorId())
+    UserRepo -> DB: SELECT * FROM users WHERE id = ?
+    DB --> UserRepo: Visitor data
+    UserRepo --> NotifService: Visitor entity
+    
+    NotifService -> NotifService: Build email:\n"Mutasi Barang Ditolak oleh PIC\nAlasan: [alasan]\nAnda dapat mengajukan ulang"
+    NotifService -> NotifService: sendEmail(visitor.email, content)
+    
+    NotifService -> DB: INSERT INTO notifications\n(user_id, type, message, ...)\nVALUES (visitor_id, 'MUTASI_REJECTED_PIC', ...)
+    
+    NotifService --> MutasiService: Notification sent
+    deactivate NotifService
+    
+    MutasiService --> MutasiCtrl: RejectionResponse
+    deactivate MutasiService
+    
+    MutasiCtrl --> UI: 200 OK
+    deactivate MutasiCtrl
+    
+    UI --> PIC: "Mutasi berhasil ditolak\nNotifikasi terkirim ke Visitor"
+    deactivate UI
+end
+
+@enduml

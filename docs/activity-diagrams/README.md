@@ -5,34 +5,42 @@ Dokumen ini berisi activity diagram untuk setiap menu dan role dalam sistem Work
 ## 📋 Daftar Activity Diagram
 
 ### 1. Autentikasi
+
 - **01-login-register.plantuml** - Login & Register (Semua Role)
 
 ### 2. Role: VISITOR
+
 - **02-visitor-buat-permit.plantuml** - Pengajuan Izin Kerja Baru
 - **07-visitor-lihat-permit.plantuml** - Kelola Permit Saya
 
 ### 3. Role: PIC (Person In Charge)
+
 - **03-pic-review-permit.plantuml** - Review & Approve/Reject Permit
 - **08-pic-dashboard.plantuml** - Dashboard & Menu PIC
 
 ### 4. Role: MANAGER
+
 - **04-manager-approval-permit.plantuml** - Final Approval Permit
 - **09-manager-dashboard.plantuml** - Dashboard & Menu Manager
 
 ### 5. Role: SECURITY
+
 - **05-security-checkin.plantuml** - Check-In Visitor
 - **06-security-checkout.plantuml** - Check-Out Visitor
 - **10-security-dashboard.plantuml** - Dashboard & Menu Security
 
 ### 6. Role: ADMIN
+
 - **11-admin-dashboard.plantuml** - Dashboard & Menu Admin (System Management)
 
 ### 7. Tracking Barang & Peralatan
+
 - **13-mutasi-barang-masuk.plantuml** - Catat Barang Masuk (Check-In)
 - **14-checkout-barang.plantuml** - Verifikasi Barang Keluar (Check-Out)
 - **15-laporan-mutasi-barang.plantuml** - Laporan & Monitoring Barang
 
 ### 8. Approval Mutasi Barang Keluar dari Data Center
+
 - **16-visitor-ajukan-mutasi-barang.plantuml** - Visitor Ajukan Izin Bawa Barang Keluar
 - **17-pic-review-mutasi-barang.plantuml** - PIC Review Mutasi Barang
 - **18-manager-approval-mutasi-barang.plantuml** - Manager Approval Mutasi Barang
@@ -40,6 +48,7 @@ Dokumen ini berisi activity diagram untuk setiap menu dan role dalam sistem Work
 - **20-visitor-kelola-mutasi.plantuml** - Visitor Kelola & Track Mutasi
 
 ### 9. Sistem
+
 - **12-notifikasi-sistem.plantuml** - Sistem Notifikasi (Email, SMS, In-App)
 
 ## 🎯 Cara Menggunakan
@@ -62,12 +71,14 @@ Dokumen ini berisi activity diagram untuk setiap menu dan role dalam sistem Work
 ### Online Viewer
 
 Anda juga bisa menggunakan online viewer:
+
 - http://www.plantuml.com/plantuml/uml/
 - Copy-paste isi file `.plantuml` ke editor
 
 ## 📊 Ringkasan Fitur per Role
 
 ### VISITOR
+
 - ✅ Register & Login
 - ✅ Buat Permohonan Izin Kerja
 - ✅ Lihat Status Permit
@@ -80,6 +91,7 @@ Anda juga bisa menggunakan online viewer:
 - ✅ Download Surat Izin Mutasi
 
 ### PIC (Person In Charge)
+
 - ✅ Review Permohonan (Approve/Reject)
 - ✅ Lihat Jadwal Kunjungan
 - ✅ Monitor Visitor d
@@ -90,6 +102,7 @@ Anda juga bisa menggunakan online viewer:
 - ✅ Manage Notifikasi
 
 ### MANAGER
+
 - ✅ Final Approval Permit
 - ✅ Monitor Real-Time
 - ✅ Monitor Mutasi Barang
@@ -102,6 +115,7 @@ Anda juga bisa menggunakan online viewer:
 - ✅ Audit Trail
 
 ### SECURITY
+
 - ✅ Check-In Visitor (QR + OTP + Biometrik)
 - ✅ Catat Barang Masuk (Label & Foto)
 - ✅ Check-Out Visitor
@@ -117,6 +131,7 @@ Anda juga bisa menggunakan online viewer:
 - ✅ Emergency Protocol
 
 ### ADMIN
+
 - ✅ User Management (CRUD)
 - ✅ System Configuration
 - ✅ Database Management
@@ -128,6 +143,7 @@ Anda juga bisa menggunakan online viewer:
 ## 🔄 Workflow Utama
 
 ### Alur Permohonan Izin Kerja
+
 ```
 VISITOR → Buat Permit
     ↓
@@ -141,6 +157,7 @@ Email/SMS → Kirim ke Visitor
 ```
 
 ### Alur Kedatangan
+
 ```
 VISITOR → Datang ke Data Center
     ↓
@@ -153,25 +170,27 @@ SECURITY → Verifikasi Biometrik
     ↓
 SECURITY → Generate Label/Tag Barang
     ↓
-SECURITY → 
+SECURITY →
 SECURITY → Terbitkan ID Card Temporary
     ↓
 VISITOR → Akses Area dengan RFID
 ```
+
 Barang (Label & Kondisi)
-    ↓
+↓
 SECURITY → Verifikasi Check-Out
-    ↓
+↓
 SECURITY → Nonaktifkan ID Card & Label
-    ↓
+↓
 Sistem → Generate Laporan Kunjungan + Mutasi Barang
 SECURITY → Verifikasi Check-Out
-    ↓
+↓
 SECURITY → Nonaktifkan ID Card
-    ↓
+↓
 Sistem → Generate Laporan Kunjungan
-    ↓
+↓
 Email → Kirim Laporan ke Semua Pihak
+
 ```
 
 ## 🎨 Konvensi Diagram
@@ -216,6 +235,7 @@ Untuk pertanyaan atau saran terkait activity diagram, silakan hubungi tim develo
 
 ---
 
-**Version:** 1.0  
-**Last Updated:** 5 Februari 2026  
+**Version:** 1.0
+**Last Updated:** 5 Februari 2026
 **Created by:** GitHub Copilot
+```

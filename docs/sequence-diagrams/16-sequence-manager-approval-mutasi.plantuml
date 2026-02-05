@@ -1,0 +1,263 @@
+@startuml Sequence - Manager Approval Mutasi
+title Sequence Diagram - Manager Approval Mutasi Barang Keluar
+
+actor "Manager" as Manager
+participant "UI\nManager Dashboard" as UI
+participant "MutasiController" as MutasiCtrl
+participant "MutasiService" as MutasiService
+participant "MutasiRepository" as MutasiRepo
+participant "QRCodeService" as QRService
+participant "PDFService" as PDFService
+participant "NotificationService" as NotifService
+participant "UserRepository" as UserRepo
+database "Database" as DB
+
+Manager -> UI: Login & buka Dashboard
+activate UI
+
+UI -> MutasiCtrl: GET /api/mutasi/pending-approval
+activate MutasiCtrl
+
+MutasiCtrl -> MutasiCtrl: Validasi JWT token\nRole = MANAGER?
+
+MutasiCtrl -> MutasiService: getMutasiPendingApproval()
+activate MutasiService
+
+MutasiService -> MutasiRepo: findByStatus(PIC_APPROVED)
+activate MutasiRepo
+MutasiRepo -> DB: SELECT * FROM mutasi_barang\nWHERE status = 'PIC_APPROVED'\nORDER BY pic_reviewed_at ASC
+activate DB
+DB --> MutasiRepo: List<Mutasi>
+deactivate DB
+MutasiRepo --> MutasiService: List<Mutasi>
+deactivate MutasiRepo
+
+MutasiService --> MutasiCtrl: List<MutasiDTO>
+deactivate MutasiService
+
+MutasiCtrl --> UI: 200 OK\n{mutasiList}
+deactivate MutasiCtrl
+
+UI --> Manager: Tampilkan daftar mutasi\nmenunggu approval
+
+Manager -> UI: Pilih mutasi untuk approve
+
+UI -> MutasiCtrl: GET /api/mutasi/{mutasiId}/detail
+activate MutasiCtrl
+
+MutasiCtrl -> MutasiService: getMutasiFullDetail(mutasiId)
+activate MutasiService
+
+MutasiService -> MutasiRepo: findByIdWithAllRelations(mutasiId)
+activate MutasiRepo
+MutasiRepo -> DB: SELECT m.*, p.*, u.visitor, u.pic\nFROM mutasi_barang m\nJOIN working_permits p ON m.permit_id = p.id\nJOIN users u ON m.visitor_id = u.id\nJOIN users pic ON m.pic_id = pic.id\nWHERE m.id = ?
+DB --> MutasiRepo: Full mutasi data
+MutasiRepo --> MutasiService: MutasiFullDetail
+deactivate MutasiRepo
+
+MutasiService --> MutasiCtrl: MutasiFullDetailDTO
+deactivate MutasiService
+
+MutasiCtrl --> UI: 200 OK\n{mutasiDetail}
+deactivate MutasiCtrl
+
+UI --> Manager: Tampilkan detail lengkap:
+note right
+- Data Visitor
+- Permit Terkait
+- Detail Barang:
+  * Jenis & Nama
+  * Jumlah
+  * Serial Number
+  * Nilai Barang (estimasi)
+- Tujuan Mutasi
+- Alasan
+- Tanggal Rencana
+- Review dari PIC
+- Catatan PIC
+- Dokumen Pendukung
+end note
+
+Manager -> Manager: Evaluasi permohonan
+
+alt Manager Approve
+    Manager -> UI: Klik "Approve"
+    Manager -> UI: Isi catatan Manager (opsional)
+    
+    UI -> MutasiCtrl: PUT /api/mutasi/{mutasiId}/manager-approve\n{catatanManager}
+    activate MutasiCtrl
+    
+    MutasiCtrl -> MutasiCtrl: Validasi JWT & role
+    
+    MutasiCtrl -> MutasiService: approveMutasiByManager(mutasiId, managerId, catatan)
+    activate MutasiService
+    
+    MutasiService -> MutasiRepo: findById(mutasiId)
+    activate MutasiRepo
+    MutasiRepo -> DB: SELECT * FROM mutasi_barang WHERE id = ?
+    DB --> MutasiRepo: Mutasi
+    MutasiRepo --> MutasiService: Mutasi entity
+    deactivate MutasiRepo
+    
+    MutasiService -> MutasiService: Validasi:\n- Status = PIC_APPROVED?\n- Manager authorized?
+    
+    ' Generate QR Code
+    MutasiService -> QRService: generateMutasiQRCode(mutasiId)
+    activate QRService
+    QRService -> QRService: Create QR data:\n{\n  mutasiId,\n  visitorId,\n  barang,\n  tanggalValid,\n  signature\n}
+    QRService -> QRService: Generate QR image
+    QRService -> QRService: Save to /uploads/qrcodes/mutasi/
+    QRService --> MutasiService: qrCodePath
+    deactivate QRService
+    
+    ' Generate Surat Izin Mutasi (PDF)
+    MutasiService -> PDFService: generateSuratIzinMutasi(mutasi)
+    activate PDFService
+    PDFService -> PDFService: Build PDF content:
+    note right
+    - Header: Logo & Nomor Surat
+    - Data Mutasi Lengkap
+    - Detail Barang
+    - QR Code
+    - Tanda Tangan Digital Manager
+    - Tanggal Valid
+    - Instruksi untuk Security
+    end note
+    PDFService -> PDFService: Generate PDF
+    PDFService -> PDFService: Save to /uploads/mutasi/surat-izin/
+    PDFService --> MutasiService: suratIzinPath
+    deactivate PDFService
+    
+    ' Update mutasi
+    MutasiService -> MutasiService: mutasi.setStatus(APPROVED)
+    MutasiService -> MutasiService: mutasi.setCatatanManager(catatan)
+    MutasiService -> MutasiService: mutasi.setManagerApprovedAt(now)
+    MutasiService -> MutasiService: mutasi.setManagerApproverId(managerId)
+    MutasiService -> MutasiService: mutasi.setQrCodePath(qrCodePath)
+    MutasiService -> MutasiService: mutasi.setSuratIzinPath(suratIzinPath)
+    MutasiService -> MutasiService: mutasi.setNomorSurat(generateNomorSurat())
+    
+    MutasiService -> MutasiRepo: save(mutasi)
+    activate MutasiRepo
+    MutasiRepo -> DB: UPDATE mutasi_barang SET\nstatus = 'APPROVED',\ncatatan_manager = ?,\nmanager_approved_at = ?,\nmanager_approver_id = ?,\nqr_code_path = ?,\nsurat_izin_path = ?,\nnomor_surat = ?\nWHERE id = ?
+    DB --> MutasiRepo: Updated
+    MutasiRepo --> MutasiService: Mutasi entity
+    deactivate MutasiRepo
+    
+    ' Kirim notifikasi ke Visitor
+    MutasiService -> NotifService: notifyVisitorApproval(mutasi)
+    activate NotifService
+    
+    NotifService -> UserRepo: findById(mutasi.getVisitorId())
+    activate UserRepo
+    UserRepo -> DB: SELECT * FROM users WHERE id = ?
+    DB --> UserRepo: Visitor data
+    UserRepo --> NotifService: Visitor entity
+    deactivate UserRepo
+    
+    NotifService -> NotifService: Build email dengan attachment:
+    note right
+    Subject: "Mutasi Barang Disetujui"
+    Content:
+    - Nomor Surat Izin
+    - Detail Barang
+    - Tanggal Valid
+    - Instruksi:
+      * Bawa Surat Izin (print/digital)
+      * Tunjukkan QR Code ke Security
+      * Prosedur di pos Security
+    Attachment:
+    - Surat Izin Mutasi (PDF)
+    - QR Code (PNG)
+    end note
+    
+    NotifService -> NotifService: sendEmail(visitor.email,\ncontent, attachments)
+    
+    NotifService -> DB: INSERT INTO notifications\n(user_id, type, message,\nrelated_id, related_type, ...)\nVALUES (visitor_id,\n'MUTASI_APPROVED', ...)
+    
+    ' Notifikasi ke PIC
+    NotifService -> NotifService: sendToPIC(\n"Mutasi telah disetujui Manager\nTanggal Rencana Keluar: [tanggal]")
+    NotifService -> DB: INSERT INTO notifications FOR PIC
+    
+    ' Notifikasi ke Security
+    NotifService -> NotifService: sendToSecurity(\n"ALERT: Mutasi Barang Disetujui")
+    note right
+    Alert ke Security:
+    - Visitor: [nama]
+    - Barang: [nama_barang]
+    - Jumlah: [jumlah]
+    - Serial: [serial_number]
+    - Tanggal Valid: [tanggal]
+    - QR Code untuk verifikasi
+    end note
+    
+    NotifService -> UserRepo: findByRole(SECURITY)
+    UserRepo -> DB: SELECT * FROM users WHERE role = 'SECURITY'
+    DB --> UserRepo: List<Security>
+    UserRepo --> NotifService: Security users
+    
+    NotifService -> NotifService: Loop: sendEmail to all security
+    NotifService -> DB: INSERT INTO notifications FOR security users
+    
+    NotifService --> MutasiService: All notifications sent
+    deactivate NotifService
+    
+    MutasiService --> MutasiCtrl: ApprovalResponse\n{status, message, suratIzinUrl, qrCodeUrl}
+    deactivate MutasiService
+    
+    MutasiCtrl --> UI: 200 OK\n{response}
+    deactivate MutasiCtrl
+    
+    UI --> Manager: "Mutasi berhasil disetujui!\nSurat Izin & QR Code telah digenerate\nNotifikasi terkirim ke:\n- Visitor (dengan surat izin)\n- PIC\n- Security"
+    deactivate UI
+    
+else Manager Reject
+    Manager -> UI: Klik "Reject"
+    Manager -> UI: Isi alasan penolakan (WAJIB)
+    
+    UI -> MutasiCtrl: PUT /api/mutasi/{mutasiId}/manager-reject\n{alasanPenolakan}
+    activate MutasiCtrl
+    
+    MutasiCtrl -> MutasiService: rejectMutasiByManager(mutasiId, managerId, alasan)
+    activate MutasiService
+    
+    MutasiService -> MutasiRepo: findById(mutasiId)
+    MutasiRepo -> DB: SELECT * FROM mutasi_barang WHERE id = ?
+    DB --> MutasiRepo: Mutasi
+    MutasiRepo --> MutasiService: Mutasi entity
+    
+    MutasiService -> MutasiService: mutasi.setStatus(REJECTED_BY_MANAGER)
+    MutasiService -> MutasiService: mutasi.setAlasanPenolakan(alasan)
+    MutasiService -> MutasiService: mutasi.setManagerApprovedAt(now)
+    
+    MutasiService -> MutasiRepo: save(mutasi)
+    MutasiRepo -> DB: UPDATE mutasi_barang SET\nstatus = 'REJECTED_BY_MANAGER',\nalasan_penolakan = ?,\nmanager_approved_at = ?\nWHERE id = ?
+    DB --> MutasiRepo: Updated
+    MutasiRepo --> MutasiService: Mutasi entity
+    
+    ' Kirim notifikasi
+    MutasiService -> NotifService: notifyRejection(mutasi)
+    activate NotifService
+    
+    ' Ke Visitor
+    NotifService -> NotifService: sendToVisitor(\n"Mutasi Ditolak oleh Manager\nAlasan: [alasan]")
+    NotifService -> DB: INSERT INTO notifications FOR visitor
+    
+    ' Ke PIC
+    NotifService -> NotifService: sendToPIC(\n"Mutasi ditolak Manager\nAlasan: [alasan]")
+    NotifService -> DB: INSERT INTO notifications FOR PIC
+    
+    NotifService --> MutasiService: Notifications sent
+    deactivate NotifService
+    
+    MutasiService --> MutasiCtrl: RejectionResponse
+    deactivate MutasiService
+    
+    MutasiCtrl --> UI: 200 OK
+    deactivate MutasiCtrl
+    
+    UI --> Manager: "Mutasi berhasil ditolak\nNotifikasi terkirim ke Visitor & PIC"
+    deactivate UI
+end
+
+@enduml

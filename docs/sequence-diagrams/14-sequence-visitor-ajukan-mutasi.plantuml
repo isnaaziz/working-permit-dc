@@ -1,0 +1,151 @@
+@startuml Sequence - Visitor Ajukan Mutasi Barang
+title Sequence Diagram - Visitor Ajukan Izin Bawa Barang Keluar
+
+actor "Visitor" as Visitor
+participant "UI\nMutasi Form" as UI
+participant "MutasiController" as MutasiCtrl
+participant "MutasiService" as MutasiService
+participant "MutasiRepository" as MutasiRepo
+participant "PermitRepository" as PermitRepo
+participant "NotificationService" as NotifService
+participant "UserRepository" as UserRepo
+participant "FileService" as FileService
+database "Database" as DB
+
+Visitor -> UI: Klik "Ajukan Mutasi Barang"
+activate UI
+UI --> Visitor: Tampilkan form mutasi
+
+note over Visitor
+  Visitor ingin membawa barang
+  keluar dari Data Center
+  (milik DC atau hasil pekerjaan)
+end note
+
+Visitor -> UI: Isi form:
+note right
+- Pilih Permit yang Aktif
+- Jenis Barang
+- Nama Barang
+- Jumlah/Unit
+- Serial Number
+- Tujuan Mutasi
+- Alasan
+- Tanggal Rencana Keluar
+end note
+
+Visitor -> UI: Upload dokumen:
+note right
+- Surat Izin (opsional)
+- Form Permintaan
+- Foto Barang
+- Dokumen Lainnya
+end note
+
+Visitor -> UI: Submit form
+
+UI -> MutasiCtrl: POST /api/mutasi\n{mutasiData, files}
+activate MutasiCtrl
+
+MutasiCtrl -> MutasiCtrl: Validasi JWT token
+MutasiCtrl -> MutasiCtrl: Extract userId dari token
+
+MutasiCtrl -> MutasiService: createMutasi(mutasiRequest, userId)
+activate MutasiService
+
+' Validasi permit
+MutasiService -> PermitRepo: findById(permitId)
+activate PermitRepo
+PermitRepo -> DB: SELECT * FROM working_permits\nWHERE id = ?
+activate DB
+DB --> PermitRepo: Permit data
+deactivate DB
+PermitRepo --> MutasiService: Permit entity
+deactivate PermitRepo
+
+MutasiService -> MutasiService: Validasi Permit:\n- Status = CHECKED_IN?\n- Masih aktif?\n- Belong to user?
+
+alt Permit tidak valid atau tidak CHECKED_IN
+    MutasiService --> MutasiCtrl: throw ValidationException\n"Permit tidak valid atau belum check-in"
+    MutasiCtrl --> UI: 400 Bad Request
+    UI --> Visitor: Tampilkan error
+else Permit valid
+
+    ' Validasi tanggal
+    MutasiService -> MutasiService: Validasi tanggal:\n- Tidak boleh masa lalu\n- Dalam periode permit
+
+    alt Tanggal tidak valid
+        MutasiService --> MutasiCtrl: throw ValidationException
+        MutasiCtrl --> UI: 400 Bad Request
+        UI --> Visitor: Tampilkan error validasi
+    else Validasi berhasil
+        
+        ' Load user data
+        MutasiService -> UserRepo: findById(userId)
+        activate UserRepo
+        UserRepo -> DB: SELECT * FROM users WHERE id = ?
+        DB --> UserRepo: User data
+        UserRepo --> MutasiService: User entity
+        deactivate UserRepo
+        
+        ' Generate mutasi ID
+        MutasiService -> MutasiService: generateMutasiId()
+        
+        ' Set initial status
+        MutasiService -> MutasiService: mutasi.setStatus(PENDING_PIC_REVIEW)
+        MutasiService -> MutasiService: mutasi.setCreatedAt(now)
+        MutasiService -> MutasiService: mutasi.setPermitId(permitId)
+        
+        ' Simpan dokumen
+        opt Ada dokumen upload
+            MutasiService -> FileService: saveFiles(files, "mutasi")
+            activate FileService
+            FileService -> FileService: Upload ke /uploads/mutasi/
+            FileService --> MutasiService: List<String> filePaths
+            deactivate FileService
+            MutasiService -> MutasiService: mutasi.setDocuments(filePaths)
+        end
+        
+        ' Simpan mutasi ke database
+        MutasiService -> MutasiRepo: save(mutasi)
+        activate MutasiRepo
+        MutasiRepo -> DB: INSERT INTO mutasi_barang\n(id, permit_id, visitor_id, pic_id,\njenis_barang, nama_barang, jumlah,\nserial_number, tujuan, alasan,\ntanggal_rencana, status, ...)
+        DB --> MutasiRepo: Mutasi saved
+        MutasiRepo --> MutasiService: Mutasi entity
+        deactivate MutasiRepo
+        
+        ' Kirim notifikasi ke PIC
+        MutasiService -> NotifService: notifyPICMutasi(mutasi, picId)
+        activate NotifService
+        
+        NotifService -> UserRepo: findById(picId)
+        UserRepo -> DB: SELECT * FROM users WHERE id = ?
+        DB --> UserRepo: PIC data
+        UserRepo --> NotifService: PIC entity
+        
+        ' Email notification
+        NotifService -> NotifService: Build email:\n"Permohonan Mutasi Barang Baru\ndari [Visitor]\nBarang: [nama_barang]\nJumlah: [jumlah]"
+        NotifService -> NotifService: sendEmail(pic.email, content)
+        
+        ' In-app notification
+        NotifService -> DB: INSERT INTO notifications\n(user_id, type, message,\nrelated_id, related_type, ...)\nVALUES (pic_id, 'MUTASI_NEW',\nmessage, mutasi_id, 'MUTASI', ...)
+        
+        NotifService --> MutasiService: Notifications sent
+        deactivate NotifService
+        
+        MutasiService --> MutasiCtrl: CreateMutasiResponse\n{mutasiId, status, message}
+        deactivate MutasiService
+        
+        MutasiCtrl --> UI: 201 Created\n{mutasiData}
+        deactivate MutasiCtrl
+        
+        UI --> Visitor: Tampilkan sukses:\n"Permohonan mutasi berhasil diajukan!\nNomor Mutasi: [ID]\nStatus: Menunggu Review PIC"
+        
+        UI -> UI: Auto redirect ke\nDaftar Mutasi
+        
+        UI --> Visitor: Redirect ke /visitor/mutasi
+        deactivate UI
+    end
+end
+
+@enduml

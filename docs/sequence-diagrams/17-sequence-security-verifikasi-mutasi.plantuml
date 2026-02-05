@@ -1,0 +1,267 @@
+@startuml Sequence - Security Verifikasi Mutasi Keluar
+title Sequence Diagram - Security Verifikasi Mutasi Barang Keluar
+
+actor "Visitor" as Visitor
+actor "Security" as Security
+participant "UI\nSecurity App" as UI
+participant "MutasiController" as MutasiCtrl
+participant "MutasiService" as MutasiService
+participant "MutasiRepository" as MutasiRepo
+participant "QRCodeService" as QRService
+participant "AccessLogService" as AccessService
+participant "NotificationService" as NotifService
+participant "FileService" as FileService
+database "Database" as DB
+
+note over Visitor
+  Visitor selesai bekerja
+  dan akan membawa barang keluar
+  dari Data Center
+end note
+
+Visitor -> Security: Datang ke Pos Security\ndengan barang & surat izin
+
+note over Visitor
+  Visitor membawa:
+  - Barang fisik
+  - Surat Izin Mutasi (PDF/Print)
+  - QR Code Mutasi
+end note
+
+Security -> UI: Buka menu\n"Verifikasi Mutasi Keluar"
+activate UI
+
+UI --> Security: Tampilkan scanner QR
+
+Security -> UI: Scan QR Code Mutasi
+
+UI -> MutasiCtrl: POST /api/mutasi/verify-qr\n{qrCodeData}
+activate MutasiCtrl
+
+MutasiCtrl -> MutasiCtrl: Validasi JWT & role
+
+MutasiCtrl -> QRService: validateMutasiQRCode(qrCodeData)
+activate QRService
+
+QRService -> QRService: Decrypt QR data
+QRService -> QRService: Verify signature
+
+alt QR Code Invalid
+    QRService --> MutasiCtrl: throw InvalidQRException
+    MutasiCtrl --> UI: 400 Bad Request\n"QR Code Tidak Valid"
+    UI --> Security: ❌ QR Code Tidak Valid
+    
+    Security -> UI: Input manual nomor mutasi
+    note right
+      Fallback: Manual verification
+      jika QR code rusak/tidak terbaca
+    end note
+    
+else QR Code Valid
+    QRService -> QRService: Extract mutasiId
+    QRService --> MutasiCtrl: mutasiId
+    deactivate QRService
+    
+    MutasiCtrl -> MutasiService: verifyMutasiExit(mutasiId, securityId)
+    activate MutasiService
+    
+    MutasiService -> MutasiRepo: findByIdWithRelations(mutasiId)
+    activate MutasiRepo
+    MutasiRepo -> DB: SELECT m.*, p.*, u.*\nFROM mutasi_barang m\nJOIN working_permits p ON m.permit_id = p.id\nJOIN users u ON m.visitor_id = u.id\nWHERE m.id = ?
+    activate DB
+    DB --> MutasiRepo: Mutasi data
+    deactivate DB
+    MutasiRepo --> MutasiService: Mutasi entity
+    deactivate MutasiRepo
+    
+    ' Validasi status
+    MutasiService -> MutasiService: Validasi status mutasi
+    
+    alt Status bukan APPROVED
+        MutasiService --> MutasiCtrl: throw InvalidStatusException
+        MutasiCtrl --> UI: 400 Bad Request\n"Mutasi tidak valid"
+        UI --> Security: ❌ Mutasi Tidak Valid\n(Status: [current_status])
+        
+    else Status sudah COMPLETED
+        MutasiService --> MutasiCtrl: throw AlreadyCompletedException
+        MutasiCtrl --> UI: 400 Bad Request\n"Mutasi sudah selesai"
+        UI --> Security: ❌ Barang Sudah Pernah Keluar\n(Tanggal: [completed_at])
+        
+    else Status = APPROVED
+        ' Validasi tanggal valid
+        MutasiService -> MutasiService: Cek tanggal valid
+        
+        alt Tanggal expired
+            MutasiService --> MutasiCtrl: throw ExpiredException
+            MutasiCtrl --> UI: 400 Bad Request\n"Surat izin kadaluarsa"
+            UI --> Security: ❌ Surat Izin Sudah Kadaluarsa\nInstruksikan visitor hubungi Manager
+            
+        else Tanggal masih valid
+            MutasiService --> MutasiCtrl: MutasiDetailDTO
+            deactivate MutasiService
+            
+            MutasiCtrl --> UI: 200 OK\n{mutasiDetail}
+            deactivate MutasiCtrl
+            
+            UI --> Security: ✅ Mutasi Valid!\nTampilkan detail:
+            note right
+            - Nama Visitor: [nama]
+            - Barang yang Diizinkan:
+              * Jenis: [jenis_barang]
+              * Nama: [nama_barang]
+              * Jumlah: [jumlah]
+              * Serial Number: [serial_number]
+            - Manager Approver: [manager_name]
+            - Tanggal Valid s/d: [tanggal]
+            end note
+            
+            Security -> Security: Cocokkan barang fisik\ndengan surat izin
+            
+            alt Barang TIDAK cocok
+                Security -> UI: Klik "Barang Tidak Sesuai"
+                
+                UI -> UI: Tampilkan pilihan:
+                note right
+                - Jumlah Melebihi Izin
+                - Jenis/Nama Barang Berbeda
+                - Serial Number Tidak Cocok
+                - Barang Mencurigakan
+                end note
+                
+                Security -> UI: Pilih masalah & isi keterangan
+                
+                UI -> MutasiCtrl: POST /api/mutasi/{mutasiId}/incident\n{issueType, keterangan, securityId}
+                activate MutasiCtrl
+                
+                MutasiCtrl -> MutasiService: createMutasiIncident(data)
+                activate MutasiService
+                
+                MutasiService -> DB: INSERT INTO mutasi_incidents\n(mutasi_id, issue_type, keterangan,\nsecurity_id, created_at, status)
+                
+                MutasiService -> MutasiService: mutasi.setStatus(ON_HOLD)
+                MutasiService -> MutasiRepo: save(mutasi)
+                MutasiRepo -> DB: UPDATE mutasi_barang\nSET status = 'ON_HOLD'
+                
+                ' Notifikasi darurat
+                MutasiService -> NotifService: notifyIncident(mutasi, incident)
+                activate NotifService
+                
+                NotifService -> NotifService: sendUrgentToManager(\n"ALERT: Mutasi Barang Bermasalah")
+                NotifService -> NotifService: sendToPIC(\n"Incident: Barang tidak sesuai izin")
+                NotifService -> DB: INSERT INTO notifications\n(HIGH PRIORITY)
+                
+                NotifService --> MutasiService: Notifications sent
+                deactivate NotifService
+                
+                MutasiService --> MutasiCtrl: IncidentCreated
+                deactivate MutasiService
+                
+                MutasiCtrl --> UI: 201 Created
+                deactivate MutasiCtrl
+                
+                UI --> Security: ⚠️ Incident Report Created\n"TAHAN BARANG & VISITOR\nHubungi Manager segera"
+                
+            else Barang COCOK
+                Security -> UI: Verifikasi detail:
+                note right
+                ✓ Nama Barang: SESUAI
+                ✓ Jumlah: SESUAI
+                ✓ Serial Number: SESUAI
+                ✓ Kondisi Barang: BAIK
+                end note
+                
+                Security -> UI: Ambil foto barang\nsebagai evidence
+                
+                UI -> FileService: Upload foto
+                activate FileService
+                FileService -> FileService: Save to /uploads/mutasi/exit-evidence/
+                FileService --> UI: photoPath
+                deactivate FileService
+                
+                Security -> UI: Klik "Approve Mutasi Keluar"
+                
+                UI -> MutasiCtrl: PUT /api/mutasi/{mutasiId}/complete\n{securityId, photoPath}
+                activate MutasiCtrl
+                
+                MutasiCtrl -> MutasiService: completeMutasiExit(mutasiId, securityId, photo)
+                activate MutasiService
+                
+                MutasiService -> MutasiRepo: findById(mutasiId)
+                MutasiRepo -> DB: SELECT * FROM mutasi_barang WHERE id = ?
+                DB --> MutasiRepo: Mutasi
+                MutasiRepo --> MutasiService: Mutasi entity
+                
+                ' Update mutasi status
+                MutasiService -> MutasiService: mutasi.setStatus(COMPLETED)
+                MutasiService -> MutasiService: mutasi.setExitVerifiedAt(now)
+                MutasiService -> MutasiService: mutasi.setSecurityVerifierId(securityId)
+                MutasiService -> MutasiService: mutasi.setExitPhotoPath(photoPath)
+                
+                MutasiService -> MutasiRepo: save(mutasi)
+                activate MutasiRepo
+                MutasiRepo -> DB: UPDATE mutasi_barang SET\nstatus = 'COMPLETED',\nexit_verified_at = NOW(),\nsecurity_verifier_id = ?,\nexit_photo_path = ?\nWHERE id = ?
+                DB --> MutasiRepo: Updated
+                MutasiRepo --> MutasiService: Mutasi entity
+                deactivate MutasiRepo
+                
+                ' Log access
+                MutasiService -> AccessService: logMutasiExit(mutasi, securityId)
+                activate AccessService
+                AccessService -> DB: INSERT INTO access_logs\n(type, mutasi_id, user_id,\nsecurity_id, action, timestamp, notes)
+                AccessService --> MutasiService: Log created
+                deactivate AccessService
+                
+                ' Generate laporan
+                MutasiService -> MutasiService: generateLaporanMutasi(mutasi):
+                note right
+                Laporan berisi:
+                - Timeline lengkap:
+                  * Created
+                  * PIC Approved
+                  * Manager Approved
+                  * Exit Verified
+                - Detail Barang
+                - Foto Evidence
+                - Status: SUCCESS
+                end note
+                
+                ' Kirim notifikasi
+                MutasiService -> NotifService: notifyMutasiCompleted(mutasi)
+                activate NotifService
+                
+                ' Ke Visitor
+                NotifService -> NotifService: sendToVisitor(\n"Barang berhasil keluar\nTerima kasih")
+                NotifService -> DB: INSERT INTO notifications FOR visitor
+                
+                ' Ke PIC
+                NotifService -> NotifService: sendToPIC(\n"Laporan: Mutasi completed")
+                NotifService -> DB: INSERT INTO notifications FOR PIC
+                
+                ' Ke Manager
+                NotifService -> NotifService: sendToManager(\n"Summary: Mutasi success")
+                NotifService -> DB: INSERT INTO notifications FOR manager
+                
+                NotifService --> MutasiService: Notifications sent
+                deactivate NotifService
+                
+                MutasiService --> MutasiCtrl: CompletionResponse\n{status: "SUCCESS", laporan}
+                deactivate MutasiService
+                
+                MutasiCtrl --> UI: 200 OK\n{response}
+                deactivate MutasiCtrl
+                
+                UI --> Security: ✅ MUTASI SELESAI\nBarang berhasil keluar\nLaporan telah digenerate
+                deactivate UI
+                
+                Security -> Visitor: "Anda boleh keluar\ndengan barang\nTerima kasih"
+                
+                note over Visitor
+                  Barang berhasil keluar
+                  dengan izin resmi
+                end note
+            end
+        end
+    end
+end
+
+@enduml
