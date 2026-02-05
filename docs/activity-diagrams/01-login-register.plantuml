@@ -1,0 +1,67 @@
+@startuml Login dan Register
+title Activity Diagram - Login & Register (Semua Role)
+
+|Pengguna|
+start
+:Buka Aplikasi;
+
+if (Sudah punya akun?) then (Ya)
+  :Pilih Menu Login;
+  :Masukkan Username;
+  :Masukkan Password;
+  
+  |Sistem|
+  :Validasi Kredensial;
+  
+  if (Kredensial Valid?) then (Ya)
+    :Generate JWT Token;
+    :Load Data Pengguna;
+    :Identifikasi Role;
+    
+    |Pengguna|
+    :Redirect ke Dashboard\nSesuai Role;
+    stop
+  else (Tidak)
+    |Pengguna|
+    :Tampilkan Pesan Error\n"Username atau Password Salah";
+    stop
+  endif
+  
+else (Tidak)
+  |Pengguna|
+  :Pilih Menu Register;
+  :Isi Form Registrasi:
+  - Nama Lengkap
+  - Email
+  - No. Telepon
+  - Username
+  - Password
+  - Konfirmasi Password;
+  
+  |Sistem|
+  :Validasi Data:
+  - Cek Email Duplikat
+  - Cek Username Duplikat
+  - Validasi Format Email
+  - Validasi Format No. Telepon
+  - Validasi Kekuatan Password
+  - Validasi Password Match;
+  
+  if (Data Valid?) then (Ya)
+    :Enkripsi Password;
+    :Set Role = VISITOR;
+    :Simpan ke Database;
+    :Kirim Email Verifikasi;
+    
+    |Pengguna|
+    :Tampilkan Pesan Sukses\n"Registrasi Berhasil";
+    :Redirect ke Login;
+    stop
+  else (Tidak)
+    |Pengguna|
+    :Tampilkan Pesan Error;
+    stop
+  endif
+endif
+
+@enduml

@@ -1,0 +1,127 @@
+@startuml Sequence - Mutasi Barang Masuk
+title Sequence Diagram - Security Catat Barang Masuk
+
+actor "Visitor" as Visitor
+actor "Security" as Security
+participant "UI\nSecurity Dashboard" as UI
+participant "MutasiController" as MutasiCtrl
+participant "MutasiService" as MutasiService
+participant "MutasiRepository" as MutasiRepo
+participant "QRCodeService" as QRService
+participant "NotificationService" as NotifService
+database "Database" as DB
+
+note over Visitor, Security
+  Proses ini dilakukan SAAT check-in
+  SEBELUM menerbitkan ID Card
+end note
+
+Visitor -> Security: Membawa barang/peralatan
+activate Security
+
+Security -> Visitor: "Apakah membawa\nbarang/peralatan?"
+Visitor --> Security: "Ya, ada [X] item"
+
+Security -> UI: Buka menu "Mutasi Barang"
+activate UI
+
+Security -> UI: Klik "Catat Barang Masuk"
+UI --> Security: Form input barang
+
+loop Untuk setiap barang
+    Security -> Visitor: "Tunjukkan barang ke-[N]"
+    Visitor -> Security: Tunjukkan barang
+    
+    Security -> UI: Input data barang:\n- Kategori (Elektronik/Hardware/Tools)\n- Nama/Jenis\n- Merk & Model\n- Serial Number\n- Warna\n- Kondisi
+    
+    Security -> UI: Foto barang:\n- Foto keseluruhan\n- Foto serial number\n- Foto kondisi
+    
+    UI -> UI: Upload foto
+end
+
+Security -> UI: Review daftar barang\n& Submit
+
+UI -> MutasiCtrl: POST /api/mutasi/barang-masuk\n{permitId, barangList[], photos[]}
+activate MutasiCtrl
+
+MutasiCtrl -> MutasiCtrl: Validate JWT & role = SECURITY
+
+MutasiCtrl -> MutasiService: catatBarangMasuk(permitId, barangData)
+activate MutasiService
+
+loop Untuk setiap barang
+    ' Generate ID mutasi
+    MutasiService -> MutasiService: generateMutasiId()
+    
+    ' Simpan foto
+    MutasiService -> MutasiService: savePhotos(photos[])\nto /uploads/mutasi/
+    
+    ' Generate QR Code/Barcode untuk barang
+    MutasiService -> QRService: generateBarangQR(mutasiId, barangData)
+    activate QRService
+    QRService -> QRService: Create QR data:\n{mutasiId, permitId, barangInfo}
+    QRService -> QRService: Generate QR image
+    QRService -> QRService: Save to /uploads/qrcodes/barang/
+    QRService --> MutasiService: QR code path
+    deactivate QRService
+    
+    ' Simpan ke database
+    MutasiService -> MutasiRepo: save(mutasiBarang)
+    activate MutasiRepo
+    MutasiRepo -> DB: INSERT INTO mutasi_barang\n(id, permit_id, kategori, nama,\nmerk, serial, kondisi, qr_code,\nfoto_paths, status: MASUK,\nwaktu_masuk)
+    activate DB
+    DB --> MutasiRepo: Mutasi saved
+    deactivate DB
+    MutasiRepo --> MutasiService: MutasiBarang entity
+    deactivate MutasiRepo
+end
+
+' Update access log
+MutasiService -> DB: INSERT INTO access_logs\n(permit_id, action: BARANG_MASUK,\ndetails: [item_count])
+
+' Kirim notifikasi
+MutasiService -> NotifService: notifyBarangMasuk(permit, barangList)
+activate NotifService
+
+NotifService -> NotifService: Build notification:\n"[X] item barang tercatat"
+
+' Ke Visitor
+NotifService -> NotifService: sendEmail(visitor,\n"Daftar barang tercatat")
+
+' Ke PIC
+NotifService -> NotifService: sendEmail(pic,\n"Visitor membawa [X] barang",\nattach: daftar)
+
+' Ke Manager
+NotifService -> NotifService: sendEmail(manager,\n"Info: Barang masuk")
+
+NotifService -> DB: INSERT INTO notifications
+NotifService --> MutasiService: Sent
+deactivate NotifService
+
+MutasiService --> MutasiCtrl: CatatBarangResponse\n{success, mutasiIds[], qrCodes[]}
+deactivate MutasiService
+
+MutasiCtrl --> UI: 201 Created\n{barangData[], labels[]}
+deactivate MutasiCtrl
+
+UI --> Security: Tampilkan sukses:\n"[X] barang berhasil dicatat"
+
+' Generate & print labels
+Security -> UI: Klik "Cetak Label"
+UI -> UI: Generate label stickers:\n- QR Code\n- Nomor Tracking\n- Nama Barang
+
+Security -> Security: Cetak label
+
+Security -> Visitor: Tempel label ke barang
+Visitor -> Visitor: Label terpasang
+
+Security -> Visitor: "Simpan label ini\nuntuk check-out nanti"
+
+Visitor --> Security: "Baik, terima kasih"
+
+UI --> Security: "Total [X] barang tercatat\nLink ke Permit ID: [ID]"
+
+deactivate UI
+deactivate Security
+
+@enduml

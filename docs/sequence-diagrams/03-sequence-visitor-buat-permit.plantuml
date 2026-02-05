@@ -1,0 +1,105 @@
+@startuml Sequence - Buat Permit
+title Sequence Diagram - Visitor Buat Permohonan Izin Kerja
+
+actor "Visitor" as Visitor
+participant "UI\nPermit Form" as UI
+participant "PermitController" as PermitCtrl
+participant "PermitService" as PermitService
+participant "PermitRepository" as PermitRepo
+participant "NotificationService" as NotifService
+participant "UserRepository" as UserRepo
+database "Database" as DB
+
+Visitor -> UI: Klik "Buat Izin Kerja Baru"
+activate UI
+UI --> Visitor: Tampilkan form permit
+
+Visitor -> UI: Isi form:\n- Tujuan kunjungan\n- Tanggal & waktu\n- Lokasi/Area\n- Deskripsi pekerjaan\n- Pilih PIC
+
+Visitor -> UI: Upload dokumen (opsional)
+
+Visitor -> UI: Submit form
+
+UI -> PermitCtrl: POST /api/permits\n{permitData, files}
+activate PermitCtrl
+
+PermitCtrl -> PermitCtrl: Validasi JWT token
+PermitCtrl -> PermitCtrl: Extract userId dari token
+
+PermitCtrl -> PermitService: createPermit(permitRequest, userId)
+activate PermitService
+
+' Validasi tanggal
+PermitService -> PermitService: Validasi tanggal:\n- Tidak boleh masa lalu\n- End date > Start date
+
+alt Validasi gagal
+    PermitService --> PermitCtrl: throw ValidationException
+    PermitCtrl --> UI: 400 Bad Request
+    UI --> Visitor: Tampilkan error validasi
+else Validasi berhasil
+    
+    ' Load user data
+    PermitService -> UserRepo: findById(userId)
+    activate UserRepo
+    UserRepo -> DB: SELECT * FROM users WHERE id = ?
+    activate DB
+    DB --> UserRepo: User data
+    deactivate DB
+    UserRepo --> PermitService: User entity
+    deactivate UserRepo
+    
+    ' Generate permit ID
+    PermitService -> PermitService: generatePermitId()
+    
+    ' Set initial status
+    PermitService -> PermitService: permit.setStatus(PENDING)
+    PermitService -> PermitService: permit.setCreatedAt(now)
+    
+    ' Simpan dokumen (jika ada)
+    opt Ada dokumen upload
+        PermitService -> PermitService: saveDocuments(files)
+        PermitService -> PermitService: permit.setDocuments(paths)
+    end
+    
+    ' Simpan permit ke database
+    PermitService -> PermitRepo: save(permit)
+    activate PermitRepo
+    PermitRepo -> DB: INSERT INTO working_permits\n(id, visitor_id, pic_id, purpose, ...)
+    DB --> PermitRepo: Permit saved
+    PermitRepo --> PermitService: Permit entity
+    deactivate PermitRepo
+    
+    ' Kirim notifikasi ke PIC
+    PermitService -> NotifService: notifyPIC(permit, picId)
+    activate NotifService
+    
+    NotifService -> UserRepo: findById(picId)
+    UserRepo -> DB: SELECT * FROM users WHERE id = ?
+    DB --> UserRepo: PIC data
+    UserRepo --> NotifService: PIC entity
+    
+    ' Email notification
+    NotifService -> NotifService: Build email:\n"Permohonan Baru dari [Visitor]"
+    NotifService -> NotifService: sendEmail(pic.email, content)
+    
+    ' In-app notification
+    NotifService -> DB: INSERT INTO notifications\n(user_id, type, message, ...)
+    
+    NotifService --> PermitService: Notifications sent
+    deactivate NotifService
+    
+    PermitService --> PermitCtrl: CreatePermitResponse\n{permitId, status, message}
+    deactivate PermitService
+    
+    PermitCtrl --> UI: 201 Created\n{permitData}
+    deactivate PermitCtrl
+    
+    UI --> Visitor: Tampilkan sukses:\n"Permohonan berhasil diajukan!\nNomor Permit: [ID]"
+    
+    UI -> UI: Auto redirect ke\nDaftar Permit
+    
+    UI --> Visitor: Redirect ke /visitor/permits
+    deactivate UI
+end
+
+@enduml

@@ -1,0 +1,106 @@
+@startuml Visitor - Kelola Permit
+title Activity Diagram - Kelola Permit Saya (Role: VISITOR)
+
+|Visitor|
+start
+:Login ke Sistem;
+:Buka Dashboard Visitor;
+:Pilih Menu "Permit Saya";
+
+|Sistem|
+:Load Daftar Permit:
+- Pending
+- Approved
+- Rejected
+- Checked-In
+- Completed;
+
+|Visitor|
+:Lihat Daftar Permit;
+
+:Pilih Aksi;
+
+if (Aksi?) then (Lihat Detail)
+  :Pilih Permit;
+  :Lihat Detail Lengkap:
+  - Status Saat Ini
+  - Timeline Approval
+  - Catatan PIC/Manager
+  - QR Code (jika Approved)
+  - OTP (jika Approved);
+  
+  if (Status = APPROVED?) then (Ya)
+    :Tombol "Download PDF";
+    :Tombol "Lihat QR Code";
+    :Tombol "Lihat OTP";
+  endif
+  
+  stop
+  
+elseif (Aksi?) then (Edit Permit)
+  if (Status = PENDING?) then (Ya)
+    :Buka Form Edit;
+    :Ubah Data Permit;
+    :Klik "Simpan";
+    
+    |Sistem|
+    :Update Data Permit;
+    :Kirim Notifikasi Update ke PIC;
+    
+    |Visitor|
+    :Tampilkan Pesan Sukses;
+    stop
+  else (Tidak)
+    :Tampilkan Error\n"Hanya Permit PENDING\nyang Bisa Diedit";
+    stop
+  endif
+  
+elseif (Aksi?) then (Batalkan Permit)
+  if (Status = PENDING atau PIC_APPROVED?) then (Ya)
+    :Klik "Batalkan Permit";
+    :Konfirmasi Pembatalan;
+    
+    if (Yakin Batalkan?) then (Ya)
+      |Sistem|
+      :Update Status = CANCELLED;
+      :Kirim Notifikasi ke:
+      - PIC
+      - Manager (jika sudah PIC_APPROVED);
+      
+      |Visitor|
+      :Tampilkan Pesan Sukses;
+      stop
+    else (Tidak)
+      :Kembali ke Daftar;
+      stop
+    endif
+  else (Tidak)
+    :Tampilkan Error\n"Permit Tidak Bisa Dibatalkan";
+    stop
+  endif
+  
+elseif (Aksi?) then (Download PDF)
+  if (Status = APPROVED?) then (Ya)
+    |Sistem|
+    :Generate PDF Permit;
+    :Download File PDF;
+    
+    |Visitor|
+    :Simpan PDF;
+    stop
+  else (Tidak)
+    :Tampilkan Error\n"PDF Hanya Tersedia\nuntuk Permit APPROVED";
+    stop
+  endif
+  
+else (Lihat Riwayat)
+  :Lihat Riwayat Kunjungan:
+  - Tanggal Kunjungan
+  - Durasi
+  - Lokasi
+  - PIC yang Ditemui
+  - Status Akhir;
+  stop
+endif
+
+@enduml

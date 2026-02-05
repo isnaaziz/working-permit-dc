@@ -1,0 +1,106 @@
+@startuml PIC Dashboard
+title Activity Diagram - Dashboard PIC (Role: PIC)
+
+|PIC|
+start
+:Login ke Sistem;
+:Buka Dashboard PIC;
+
+|Sistem|
+:Load Data Dashboard:
+- Total Permit Pending Review
+- Permit yang Direview Hari Ini
+- Visitor yang Sedang di Lokasi
+- Jadwal Kunjungan Mendatang;
+
+|PIC|
+:Lihat Ringkasan Dashboard;
+
+:Pilih Menu;
+
+if (Menu?) then (Review Permohonan)
+  :Lihat Daftar Permit PENDING;
+  :Filter/Search Permit;
+  :Pilih Permit;
+  :Review & Approve/Reject;
+  
+  note right
+    Detail di diagram
+    03-pic-review-permit
+  end note
+  
+  stop
+  
+elseif (Menu?) then (Jadwal Kunjungan)
+  :Lihat Kalender Kunjungan;
+  :Filter by Tanggal;
+  :Lihat Detail Visitor:
+  - Nama & Perusahaan
+  - Waktu Kunjungan
+  - Tujuan
+  - Status (Akan Datang/Sedang di Lokasi);
+  
+  :Set Reminder (opsional);
+  stop
+  
+elseif (Menu?) then (Visitor di Lokasi)
+  :Lihat Daftar Visitor\nSedang Checked-In;
+  :Lihat Detail:
+  - Nama
+  - Check-In Time
+  - Durasi
+  - Lokasi/Area;
+  
+  :Opsi Hubungi Visitor;
+  stop
+  
+elseif (Menu?) then (Riwayat)
+  :Lihat Riwayat Permit:
+  - Semua Status
+  - Filter by Tanggal
+  - Filter by Status
+  - Filter by Visitor;
+  
+  :Pilih Permit;
+  :Lihat Detail & Timeline;
+  :Export Laporan (PDF/Excel);
+  stop
+  
+elseif (Menu?) then (Notifikasi)
+  :Lihat Daftar Notifikasi:
+  - Permohonan Baru
+  - Permit Disetujui Manager
+  - Visitor Check-In
+  - Visitor Check-Out
+  - Alert & Reminder;
+  
+  :Klik Notifikasi;
+  :Buka Detail Terkait;
+  :Tandai Sudah Dibaca;
+  stop
+  
+else (Laporan)
+  :Pilih Jenis Laporan:
+  - Laporan Harian
+  - Laporan Mingguan
+  - Laporan Bulanan
+  - Custom Range;
+  
+  :Pilih Filter:
+  - Status Permit
+  - Tipe Pekerjaan
+  - Area Lokasi;
+  
+  |Sistem|
+  :Generate Laporan:
+  - Grafik & Statistik
+  - Tabel Detail
+  - Summary;
+  
+  |PIC|
+  :Preview Laporan;
+  :Download (PDF/Excel);
+  stop
+endif
+
+@enduml

@@ -1,0 +1,153 @@
+@startuml Sequence - Check-Out
+title Sequence Diagram - Security Check-Out Visitor
+
+actor "Visitor" as Visitor
+actor "Security" as Security
+participant "UI\nSecurity Dashboard" as UI
+participant "AccessController" as AccessCtrl
+participant "AccessService" as AccessService
+participant "PermitRepository" as PermitRepo
+participant "TempIdCardRepository" as IDCardRepo
+participant "AccessLogRepository" as AccessLogRepo
+participant "ReportService" as ReportService
+participant "NotificationService" as NotifService
+database "Database" as DB
+
+Visitor -> Security: Selesai bekerja\nKembali ke pos security
+activate Security
+
+Visitor -> Security: Kembalikan ID Card
+
+Security -> UI: Buka menu "Check-Out"
+activate UI
+
+Security -> UI: Scan ID Card / Input Permit ID
+UI -> UI: Read ID Card data
+
+UI -> AccessCtrl: GET /api/access/permit/{permitId}
+activate AccessCtrl
+
+AccessCtrl -> PermitRepo: findById(permitId)
+activate PermitRepo
+PermitRepo -> DB: SELECT * FROM working_permits\nWHERE id = ?
+activate DB
+DB --> PermitRepo: Permit data
+deactivate DB
+PermitRepo --> AccessCtrl: Permit entity
+deactivate PermitRepo
+
+AccessCtrl -> AccessCtrl: Validate:\n- status = CHECKED_IN?
+
+alt Status bukan CHECKED_IN
+    AccessCtrl --> UI: 400 Bad Request\n"Permit tidak dalam status Check-In"
+    UI --> Security: Tampilkan error
+    Security --> Visitor: "Ada masalah dengan permit"
+    stop
+else Status = CHECKED_IN
+    AccessCtrl --> UI: 200 OK {permitData}
+    deactivate AccessCtrl
+    
+    UI --> Security: Tampilkan data visitor:\n- Nama\n- Check-in time\n- Durasi\n- PIC
+    
+    Security -> Visitor: "Pekerjaan sudah selesai?"
+    Visitor --> Security: "Ya, sudah selesai"
+    
+    Security -> Security: Periksa barang bawaan\nSesuai SOP
+    
+    Security -> UI: Klik "Check-Out"
+    
+    UI -> AccessCtrl: POST /api/access/checkout\n{permitId}
+    activate AccessCtrl
+    
+    AccessCtrl -> AccessService: processCheckOut(permitId)
+    activate AccessService
+    
+    ' Load permit
+    AccessService -> PermitRepo: findById(permitId)
+    PermitRepo -> DB: SELECT * FROM working_permits WHERE id = ?
+    DB --> PermitRepo: Permit
+    PermitRepo --> AccessService: Permit entity
+    
+    ' Update permit status
+    AccessService -> AccessService: permit.setStatus(CHECKED_OUT)
+    AccessService -> AccessService: permit.setCheckOutTime(now)
+    AccessService -> AccessService: duration = checkOutTime - checkInTime
+    AccessService -> AccessService: permit.setDuration(duration)
+    
+    AccessService -> PermitRepo: save(permit)
+    PermitRepo -> DB: UPDATE working_permits\nSET status = 'CHECKED_OUT',\ncheck_out_time = NOW()
+    
+    ' Nonaktifkan ID Card
+    AccessService -> IDCardRepo: findByPermitId(permitId)
+    activate IDCardRepo
+    IDCardRepo -> DB: SELECT * FROM temp_id_cards\nWHERE permit_id = ?
+    DB --> IDCardRepo: ID Card
+    IDCardRepo --> AccessService: TempIdCard entity
+    deactivate IDCardRepo
+    
+    AccessService -> AccessService: idCard.setStatus(INACTIVE)
+    AccessService -> AccessService: idCard.setReturnedAt(now)
+    
+    AccessService -> IDCardRepo: save(idCard)
+    IDCardRepo -> DB: UPDATE temp_id_cards\nSET status = 'INACTIVE'
+    
+    ' Catat access log
+    AccessService -> AccessLogRepo: save(accessLog)
+    activate AccessLogRepo
+    AccessLogRepo -> DB: INSERT INTO access_logs\n(permit_id, action: CHECK_OUT,\ntimestamp, duration)
+    AccessLogRepo --> AccessService: Log saved
+    deactivate AccessLogRepo
+    
+    ' Generate laporan kunjungan
+    AccessService -> ReportService: generateVisitReport(permit)
+    activate ReportService
+    
+    ReportService -> ReportService: Build report:\n- Check-in time\n- Check-out time\n- Duration\n- Lokasi diakses\n- PIC ditemui
+    
+    ReportService -> ReportService: Generate PDF report
+    ReportService -> ReportService: Save to /uploads/reports/
+    
+    ReportService --> AccessService: Report path
+    deactivate ReportService
+    
+    AccessService -> AccessService: permit.setReportPath(path)
+    AccessService -> PermitRepo: save(permit)
+    PermitRepo -> DB: UPDATE working_permits\nSET report_path = ?
+    
+    ' Kirim notifikasi
+    AccessService -> NotifService: notifyCheckOut(permit, report)
+    activate NotifService
+    
+    ' Ke Visitor
+    NotifService -> NotifService: sendEmail(visitor,\n"Check-out berhasil",\nattach: report)
+    
+    ' Ke PIC
+    NotifService -> NotifService: sendEmail(pic,\n"Visitor telah keluar",\nattach: report)
+    
+    ' Ke Manager
+    NotifService -> NotifService: sendEmail(manager,\n"Laporan kunjungan",\nattach: report)
+    
+    NotifService -> DB: INSERT INTO notifications\n(multiple users)
+    
+    NotifService --> AccessService: Notifications sent
+    deactivate NotifService
+    
+    AccessService --> AccessCtrl: CheckOutResponse\n{success, duration, reportPath}
+    deactivate AccessService
+    
+    AccessCtrl --> UI: 200 OK {checkOutData}
+    deactivate AccessCtrl
+    
+    UI --> Security: Tampilkan sukses:\n"Check-Out Berhasil!\nDurasi: [X jam Y menit]"
+    
+    Security -> Security: Simpan/Hancurkan ID Card
+    
+    Security -> Visitor: "Terima kasih\nHati-hati di jalan"
+    
+    UI --> Security: "Visitor checked-out\nLaporan terkirim"
+    deactivate UI
+    
+    deactivate Security
+end
+
+@enduml

@@ -1,0 +1,79 @@
+@startuml PIC Review Mutasi Barang
+title Activity Diagram - PIC Review Mutasi Barang Keluar
+
+|PIC|
+start
+:Login ke Sistem;
+:Buka Dashboard PIC;
+
+if (Ada Notifikasi Baru?) then (Ya)
+  :Lihat Notifikasi\nPermohonan Mutasi Baru;
+endif
+
+:Pilih Menu "Mutasi Barang";
+:Lihat Daftar Mutasi\ndengan Status PENDING_PIC_REVIEW;
+
+:Pilih Mutasi yang\nAkan Direview;
+
+:Lihat Detail Permohonan:
+- Data Visitor
+- Permit Terkait
+- Jenis & Nama Barang
+- Jumlah
+- Serial Number
+- Tujuan Mutasi
+- Alasan
+- Tanggal Rencana
+- Dokumen Pendukung;
+
+:Evaluasi Permohonan;
+
+if (Permohonan Layak?) then (Ya)
+  |PIC|
+  :Klik Tombol "Approve";
+  :Isi Catatan PIC (opsional);
+  
+  |Sistem|
+  :Update Status = PIC_APPROVED;
+  :Simpan Catatan PIC;
+  :Catat Waktu Review;
+  :Catat Reviewer (PIC ID);
+  
+  :Kirim Notifikasi ke Manager:
+  - Email
+  - In-App Notification
+  - "Mutasi menunggu approval Manager";
+  
+  :Kirim Notifikasi ke Visitor:
+  - "Mutasi telah direview PIC"
+  - "Menunggu approval Manager";
+  
+  :Kirim Notifikasi ke Security:
+  - Info mutasi akan datang
+  - Data barang yang akan keluar;
+  
+  |PIC|
+  :Tampilkan Pesan Sukses;
+  stop
+  
+else (Tidak)
+  |PIC|
+  :Klik Tombol "Reject";
+  :Isi Alasan Penolakan\n(Wajib);
+  
+  |Sistem|
+  :Update Status = REJECTED_BY_PIC;
+  :Simpan Alasan Penolakan;
+  :Catat Waktu Review;
+  
+  :Kirim Notifikasi ke Visitor:
+  - Email dengan Alasan
+  - In-App Notification
+  - Instruksi jika perlu pengajuan ulang;
+  
+  |PIC|
+  :Tampilkan Pesan Sukses;
+  stop
+endif
+
+@enduml

@@ -1,0 +1,87 @@
+@startuml Approval Izin Kerja oleh Manager
+title Activity Diagram - Approval Izin Kerja (Role: MANAGER)
+
+|Manager|
+start
+:Login ke Sistem;
+:Buka Dashboard Manager;
+
+if (Ada Notifikasi Baru?) then (Ya)
+  :Lihat Notifikasi\nPermit PIC_APPROVED;
+endif
+
+:Pilih Menu "Persetujuan";
+:Lihat Daftar Permit\ndengan Status PIC_APPROVED;
+
+:Pilih Permit yang\nAkan Disetujui;
+
+:Lihat Detail Lengkap:
+- Data Pemohon
+- Detail Permohonan
+- Review dari PIC
+- Catatan PIC
+- Dokumen Pendukung;
+
+:Evaluasi Permohonan;
+
+if (Setuju?) then (Ya)
+  |Manager|
+  :Klik Tombol "Approve";
+  :Isi Catatan Manager (opsional);
+  
+  |Sistem|
+  :Update Status = APPROVED;
+  :Simpan Catatan Manager;
+  :Catat Waktu Approval;
+  
+  :Generate QR Code Unik;
+  :Generate OTP (6 digit);
+  :Set Waktu Expired OTP (24 jam);
+  
+  :Generate PDF Permit:
+  - Data Lengkap Permit
+  - QR Code
+  - Tanda Tangan Digital;
+  
+  :Kirim Notifikasi ke Visitor:
+  - Email dengan PDF Permit
+  - QR Code
+  - OTP Code
+  - Instruksi Kedatangan;
+  
+  :Kirim Notifikasi ke PIC:
+  - "Permit telah disetujui Manager"
+  - Jadwal Kunjungan;
+  
+  :Kirim Notifikasi ke Security:
+  - "Visitor Baru Terdaftar"
+  - Jadwal Kedatangan;
+  
+  |Manager|
+  :Tampilkan Pesan Sukses;
+  stop
+  
+else (Tidak)
+  |Manager|
+  :Klik Tombol "Reject";
+  :Isi Alasan Penolakan\n(Wajib);
+  
+  |Sistem|
+  :Update Status = REJECTED;
+  :Simpan Alasan Penolakan;
+  :Catat Waktu Approval;
+  
+  :Kirim Notifikasi ke Visitor:
+  - Email dengan Alasan
+  - In-App Notification;
+  
+  :Kirim Notifikasi ke PIC:
+  - "Permit ditolak Manager"
+  - Alasan Penolakan;
+  
+  |Manager|
+  :Tampilkan Pesan Sukses;
+  stop
+endif
+
+@enduml

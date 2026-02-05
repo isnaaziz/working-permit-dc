@@ -1,0 +1,78 @@
+@startuml Sequence - Login
+title Sequence Diagram - Login
+
+actor "Pengguna" as User
+participant "UI\nLogin Page" as UI
+participant "AuthController" as AuthCtrl
+participant "AuthService" as AuthService
+participant "UserRepository" as UserRepo
+participant "JwtTokenProvider" as JWT
+database "Database" as DB
+
+User -> UI: Buka halaman login
+activate UI
+UI --> User: Tampilkan form login
+
+User -> UI: Input username & password
+UI -> AuthCtrl: POST /api/auth/login\n{username, password}
+activate AuthCtrl
+
+AuthCtrl -> AuthService: authenticateUser(username, password)
+activate AuthService
+
+AuthService -> UserRepo: findByUsername(username)
+activate UserRepo
+UserRepo -> DB: SELECT * FROM users\nWHERE username = ?
+activate DB
+DB --> UserRepo: User data
+deactivate DB
+UserRepo --> AuthService: User entity
+deactivate UserRepo
+
+alt User tidak ditemukan
+    AuthService --> AuthCtrl: throw UsernameNotFoundException
+    AuthCtrl --> UI: 401 Unauthorized\n"Invalid credentials"
+    UI --> User: Tampilkan error\n"Username atau Password salah"
+else User ditemukan
+    AuthService -> AuthService: passwordEncoder.matches(password)
+    
+    alt Password tidak cocok
+        AuthService --> AuthCtrl: throw BadCredentialsException
+        AuthCtrl --> UI: 401 Unauthorized
+        UI --> User: Tampilkan error\n"Password salah"
+    else Password cocok
+        AuthService -> JWT: generateToken(user)
+        activate JWT
+        JWT -> JWT: createJWT(userId, username, roles)
+        JWT --> AuthService: JWT token
+        deactivate JWT
+        
+        AuthService -> UserRepo: updateLastLogin(userId)
+        UserRepo -> DB: UPDATE users SET last_login = NOW()
+        
+        AuthService --> AuthCtrl: LoginResponse\n{token, user, role}
+        deactivate AuthService
+        
+        AuthCtrl --> UI: 200 OK\n{token, userInfo}
+        deactivate AuthCtrl
+        
+        UI -> UI: Simpan token ke localStorage
+        UI -> UI: Identifikasi role
+        
+        alt Role = VISITOR
+            UI --> User: Redirect ke /visitor/dashboard
+        else Role = PIC
+            UI --> User: Redirect ke /pic/dashboard
+        else Role = MANAGER
+            UI --> User: Redirect ke /manager/dashboard
+        else Role = SECURITY
+            UI --> User: Redirect ke /security/dashboard
+        else Role = ADMIN
+            UI --> User: Redirect ke /admin/dashboard
+        end
+        
+        deactivate UI
+    end
+end
+
+@enduml

@@ -1,0 +1,110 @@
+@startuml Manager Approval Mutasi Barang
+title Activity Diagram - Manager Approval Mutasi Barang Keluar
+
+|Manager|
+start
+:Login ke Sistem;
+:Buka Dashboard Manager;
+
+if (Ada Notifikasi Baru?) then (Ya)
+  :Lihat Notifikasi\nMutasi PIC_APPROVED;
+endif
+
+:Pilih Menu "Approval Mutasi Barang";
+:Lihat Daftar Mutasi\ndengan Status PIC_APPROVED;
+
+:Pilih Mutasi yang\nAkan Disetujui;
+
+:Lihat Detail Lengkap:
+- Data Visitor
+- Permit Terkait
+- Detail Barang
+  * Jenis & Nama
+  * Jumlah
+  * Serial Number
+  * Nilai Barang (estimasi)
+- Tujuan Mutasi
+- Alasan
+- Tanggal Rencana
+- Review dari PIC
+- Catatan PIC
+- Dokumen Pendukung;
+
+:Evaluasi Permohonan;
+
+if (Setuju?) then (Ya)
+  |Manager|
+  :Klik Tombol "Approve";
+  :Isi Catatan Manager (opsional);
+  
+  |Sistem|
+  :Update Status = APPROVED;
+  :Simpan Catatan Manager;
+  :Catat Waktu Approval;
+  :Catat Approver (Manager ID);
+  
+  :Generate Surat Izin Mutasi:
+  - Nomor Surat
+  - Data Lengkap Barang
+  - Tanggal Valid
+  - QR Code Mutasi
+  - Tanda Tangan Digital Manager;
+  
+  :Generate QR Code Mutasi;
+  
+  :Generate PDF Surat Izin;
+  
+  :Kirim Notifikasi ke Visitor:
+  - Email dengan PDF Surat Izin
+  - QR Code Mutasi
+  - Instruksi membawa keluar barang
+  - Prosedur di Security;
+  
+  :Kirim Notifikasi ke PIC:
+  - "Mutasi telah disetujui Manager"
+  - Tanggal Rencana Keluar;
+  
+  :Kirim Notifikasi ke Security:
+  - "Mutasi Barang Disetujui"
+  - Detail Barang
+  - QR Code Mutasi
+  - Tanggal Valid
+  - Alert untuk verifikasi saat keluar;
+  
+  |Manager|
+  :Tampilkan Pesan Sukses;
+  
+  note right
+    Visitor akan menunjukkan:
+    - Surat Izin Mutasi (PDF)
+    - QR Code Mutasi
+    Saat akan membawa barang keluar
+    ke Security
+  end note
+  
+  stop
+  
+else (Tidak)
+  |Manager|
+  :Klik Tombol "Reject";
+  :Isi Alasan Penolakan\n(Wajib);
+  
+  |Sistem|
+  :Update Status = REJECTED_BY_MANAGER;
+  :Simpan Alasan Penolakan;
+  :Catat Waktu Approval;
+  
+  :Kirim Notifikasi ke Visitor:
+  - Email dengan Alasan
+  - In-App Notification;
+  
+  :Kirim Notifikasi ke PIC:
+  - "Mutasi ditolak Manager"
+  - Alasan Penolakan;
+  
+  |Manager|
+  :Tampilkan Pesan Sukses;
+  stop
+endif
+
+@enduml

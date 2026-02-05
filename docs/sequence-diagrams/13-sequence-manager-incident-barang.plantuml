@@ -1,0 +1,303 @@
+@startuml Sequence - Manager Review Incident Barang
+title Sequence Diagram - Manager Review & Handle Incident Barang
+
+actor "Manager" as Manager
+participant "UI\nManager Dashboard" as UI
+participant "IncidentController" as IncidentCtrl
+participant "IncidentService" as IncidentService
+participant "IncidentRepository" as IncidentRepo
+participant "MutasiRepository" as MutasiRepo
+participant "NotificationService" as NotifService
+database "Database" as DB
+
+Manager -> UI: Login & buka dashboard
+activate UI
+
+alt Ada alert baru
+    UI --> Manager: 🔴 Alert notification:\n"URGENT: [X] incident baru"
+end
+
+Manager -> UI: Klik menu "Incident Reports"
+
+UI -> IncidentCtrl: GET /api/incidents\n?status=OPEN,PENDING
+activate IncidentCtrl
+
+IncidentCtrl -> IncidentRepo: findByStatusIn([OPEN, PENDING])
+activate IncidentRepo
+
+IncidentRepo -> DB: SELECT i.*, mb.*, wp.*, u.name as visitor_name\nFROM incidents i\nJOIN mutasi_barang mb ON i.mutasi_id = mb.id\nJOIN working_permits wp ON i.permit_id = wp.id\nJOIN users u ON wp.visitor_id = u.id\nWHERE i.status IN ('OPEN', 'PENDING')\nORDER BY i.severity DESC, i.created_at DESC
+activate DB
+DB --> IncidentRepo: Incident list
+deactivate DB
+
+IncidentRepo --> IncidentCtrl: List<Incident>
+deactivate IncidentRepo
+
+IncidentCtrl -> IncidentCtrl: Categorize:\n- CRITICAL (barang hilang)\n- HIGH (barang rusak)\n- MEDIUM (minor issues)\n- LOW (admin issues)
+
+IncidentCtrl --> UI: 200 OK\n{incidents[], counts by severity}
+deactivate IncidentCtrl
+
+UI --> Manager: Tampilkan dashboard:\n📊 Summary:\n- 🔴 Critical: [X]\n- 🟠 High: [Y]\n- 🟡 Medium: [Z]\n\nDaftar incident (sorted by priority)
+
+Manager -> UI: Pilih incident
+
+UI -> IncidentCtrl: GET /api/incidents/{incidentId}
+activate IncidentCtrl
+
+IncidentCtrl -> IncidentRepo: findByIdWithDetails(incidentId)
+IncidentRepo -> DB: SELECT detailed data with joins
+DB --> IncidentRepo: Full incident data
+IncidentRepo --> IncidentCtrl: Incident entity
+
+IncidentCtrl --> UI: 200 OK {incidentData}
+deactivate IncidentCtrl
+
+UI --> Manager: Detail lengkap:\n\n**Informasi Visitor:**\n- Nama & Perusahaan\n- Kontak\n- PIC yang dituju\n\n**Informasi Barang:**\n- Nama barang\n- Kategori\n- Serial number\n- Nilai estimasi\n\n**Timeline:**\n- Waktu masuk\n- Waktu keluar\n- Durasi di lokasi\n\n**Masalah:**\n- Tipe (Rusak/Hilang)\n- Deskripsi detail\n- Foto evidence\n- Kondisi saat masuk vs keluar\n\n**Penanganan:**\n- Berita Acara\n- Tanda tangan\n- Security yang handle\n- Catatan PIC
+
+Manager -> Manager: Review & analisis
+
+alt Incident Type: BARANG HILANG
+    Manager -> UI: Lihat detail kehilangan
+    
+    UI --> Manager: Info tambahan:\n- Terakhir terlihat\n- Area yang dikunjungi\n- CCTV footage (jika ada)\n- Search efforts
+    
+    Manager -> UI: Klik "Investigasi"
+    
+    UI --> Manager: Form investigasi:\n- Assign investigator\n- Set deadline\n- Investigation plan
+    
+    Manager -> UI: Submit investigasi
+    
+    UI -> IncidentCtrl: POST /api/incidents/{id}/investigate\n{investigatorId, deadline, plan}
+    activate IncidentCtrl
+    
+    IncidentCtrl -> IncidentService: startInvestigation(incidentId, data)
+    activate IncidentService
+    
+    IncidentService -> IncidentRepo: findById(incidentId)
+    IncidentRepo -> DB: SELECT
+    DB --> IncidentRepo: Incident
+    IncidentRepo --> IncidentService: Incident
+    
+    IncidentService -> IncidentService: incident.setStatus(INVESTIGATING)
+    IncidentService -> IncidentService: incident.setInvestigator(investigatorId)
+    IncidentService -> IncidentService: incident.setDeadline(deadline)
+    
+    IncidentService -> IncidentRepo: save(incident)
+    IncidentRepo -> DB: UPDATE incidents
+    
+    ' Log activity
+    IncidentService -> DB: INSERT INTO incident_logs\n(incident_id, action: START_INVESTIGATION,\nby_user_id, notes)
+    
+    ' Notifikasi
+    IncidentService -> NotifService: notifyInvestigation(incident)
+    activate NotifService
+    NotifService -> NotifService: sendEmail(investigator)
+    NotifService -> NotifService: sendEmail(pic, visitor)
+    NotifService -> DB: INSERT INTO notifications
+    NotifService --> IncidentService: Sent
+    deactivate NotifService
+    
+    IncidentService --> IncidentCtrl: InvestigationStarted
+    deactivate IncidentService
+    
+    IncidentCtrl --> UI: 200 OK
+    deactivate IncidentCtrl
+    
+    UI --> Manager: "Investigasi dimulai ✓\nInvestigator: [Name]"
+    
+elseif Incident Type: BARANG RUSAK
+    Manager -> UI: Review kerusakan
+    
+    UI --> Manager: Detail kerusakan:\n- Foto before/after\n- Deskripsi lengkap\n- Estimasi biaya perbaikan\n- Catatan security
+    
+    Manager -> Manager: Keputusan
+
+    
+    alt Keputusan: Visitor bertanggung jawab
+        Manager -> UI: Klik "Tanggung Jawab Visitor"
+        
+        UI --> Manager: Form penyelesaian:\n- Opsi penyelesaian\n- Biaya/kompensasi\n- Deadline pembayaran
+        
+        Manager -> UI: Submit keputusan
+        
+        UI -> IncidentCtrl: POST /api/incidents/{id}/resolve\n{decision: VISITOR_LIABLE,\ncompensation, deadline}
+        activate IncidentCtrl
+        
+        IncidentCtrl -> IncidentService: resolveIncident(incidentId, resolution)
+        activate IncidentService
+        
+        IncidentService -> IncidentRepo: findById(incidentId)
+        IncidentRepo -> DB: SELECT
+        DB --> IncidentRepo: Incident
+        IncidentRepo --> IncidentService: Incident
+        
+        IncidentService -> IncidentService: incident.setStatus(RESOLVED_VISITOR_LIABLE)
+        IncidentService -> IncidentService: incident.setResolution(resolution)
+        IncidentService -> IncidentService: incident.setResolvedAt(now)
+        IncidentService -> IncidentService: incident.setResolvedBy(managerId)
+        
+        IncidentService -> IncidentRepo: save(incident)
+        IncidentRepo -> DB: UPDATE incidents
+        
+        ' Create compensation record
+        IncidentService -> DB: INSERT INTO compensations\n(incident_id, visitor_id, amount,\ndeadline, status: PENDING)
+        
+        ' Log
+        IncidentService -> DB: INSERT INTO incident_logs\n(action: RESOLVED, decision)
+        
+        ' Notifikasi ke Visitor
+        IncidentService -> NotifService: notifyVisitorResolution(incident, resolution)
+        activate NotifService
+        NotifService -> NotifService: Build formal email:\n- Keputusan Manager\n- Detail kompensasi\n- Cara pembayaran\n- Deadline
+        NotifService -> NotifService: sendEmail(visitor)
+        NotifService -> DB: INSERT INTO notifications
+        NotifService --> IncidentService: Sent
+        deactivate NotifService
+        
+        ' Notif ke PIC & Finance
+        IncidentService -> NotifService: notifyStakeholders(incident)
+        NotifService -> NotifService: sendEmail(pic, finance)
+        
+        IncidentService --> IncidentCtrl: IncidentResolved
+        deactivate IncidentService
+        
+        IncidentCtrl --> UI: 200 OK
+        deactivate IncidentCtrl
+        
+        UI --> Manager: "Incident resolved ✓\nMenunggu kompensasi"
+        
+    else Keputusan: Bukan tanggung jawab visitor
+        Manager -> UI: Klik "Bukan Tanggung Jawab"
+        
+        UI --> Manager: Form:\n- Alasan (wear and tear, dll)\n- Catatan closure
+        
+        Manager -> UI: Submit
+        
+        UI -> IncidentCtrl: POST /api/incidents/{id}/close\n{decision: NO_LIABILITY, reason}
+        activate IncidentCtrl
+        
+        IncidentCtrl -> IncidentService: closeIncident(incidentId, reason)
+        activate IncidentService
+        
+        IncidentService -> IncidentRepo: findById(incidentId)
+        IncidentRepo -> DB: SELECT
+        DB --> IncidentRepo: Incident
+        IncidentRepo --> IncidentService: Incident
+        
+        IncidentService -> IncidentService: incident.setStatus(CLOSED_NO_LIABILITY)
+        IncidentService -> IncidentService: incident.setClosureReason(reason)
+        IncidentService -> IncidentService: incident.setClosedAt(now)
+        
+        IncidentService -> IncidentRepo: save(incident)
+        IncidentRepo -> DB: UPDATE incidents
+        
+        IncidentService -> DB: INSERT INTO incident_logs\n(action: CLOSED)
+        
+        ' Notifikasi
+        IncidentService -> NotifService: notifyIncidentClosed(incident)
+        activate NotifService
+        NotifService -> NotifService: sendEmail(visitor, pic)
+        NotifService -> DB: INSERT INTO notifications
+        NotifService --> IncidentService: Sent
+        deactivate NotifService
+        
+        IncidentService --> IncidentCtrl: IncidentClosed
+        deactivate IncidentService
+        
+        IncidentCtrl --> UI: 200 OK
+        deactivate IncidentCtrl
+        
+        UI --> Manager: "Incident closed ✓\nNo liability"
+    end
+    
+else Incident butuh info tambahan
+    Manager -> UI: Klik "Minta Info Tambahan"
+    
+    UI --> Manager: Form:\n- Info yang dibutuhkan\n- Dari siapa (PIC/Visitor/Security)
+    
+    Manager -> UI: Submit request
+    
+    UI -> IncidentCtrl: POST /api/incidents/{id}/request-info\n{requestedInfo, from}
+    activate IncidentCtrl
+    
+    IncidentCtrl -> IncidentService: requestAdditionalInfo(incidentId, request)
+    activate IncidentService
+    
+    IncidentService -> IncidentRepo: findById(incidentId)
+    IncidentRepo -> DB: SELECT
+    DB --> IncidentRepo: Incident
+    IncidentRepo --> IncidentService: Incident
+    
+    IncidentService -> IncidentService: incident.setStatus(PENDING_INFO)
+    
+    IncidentService -> IncidentRepo: save(incident)
+    IncidentRepo -> DB: UPDATE incidents
+    
+    IncidentService -> DB: INSERT INTO incident_logs\n(action: INFO_REQUESTED)
+    
+    ' Notifikasi
+    IncidentService -> NotifService: notifyInfoRequest(incident, request)
+    activate NotifService
+    NotifService -> NotifService: sendEmail(requestedFrom)
+    NotifService -> DB: INSERT INTO notifications\n(priority: HIGH)
+    NotifService --> IncidentService: Sent
+    deactivate NotifService
+    
+    IncidentService --> IncidentCtrl: RequestSent
+    deactivate IncidentService
+    
+    IncidentCtrl --> UI: 200 OK
+    deactivate IncidentCtrl
+    
+    UI --> Manager: "Request sent ✓\nMenunggu response"
+end
+
+' View Reports & Analytics
+opt Manager ingin lihat analytics
+    Manager -> UI: Klik "Incident Analytics"
+    
+    UI -> IncidentCtrl: GET /api/incidents/analytics\n?period=monthly
+    activate IncidentCtrl
+    
+    IncidentCtrl -> IncidentRepo: getAnalytics(period)
+    IncidentRepo -> DB: Complex aggregation query:\n- Total incidents\n- By type\n- By severity\n- Resolution time avg\n- Financial impact\n- Trend analysis
+    DB --> IncidentRepo: Analytics data
+    IncidentRepo --> IncidentCtrl: Statistics
+    
+    IncidentCtrl --> UI: 200 OK {analytics}
+    deactivate IncidentCtrl
+    
+    UI --> Manager: Dashboard analytics:\n📊 Charts:\n- Incident trend (Line)\n- Type distribution (Pie)\n- Resolution rate (Gauge)\n- Financial impact (Bar)\n\n📈 KPIs:\n- Avg resolution time\n- Success rate\n- Total compensation\n- Most problematic category
+    
+    Manager -> UI: Klik "Export Report"
+    
+    UI -> IncidentCtrl: GET /api/incidents/report\n?format=pdf&period=monthly
+    activate IncidentCtrl
+    
+    IncidentCtrl -> IncidentCtrl: Generate comprehensive report:\n- Executive summary\n- Detailed incidents\n- Analytics & charts\n- Recommendations
+    
+    IncidentCtrl --> UI: PDF report
+    deactivate IncidentCtrl
+    
+    UI --> Manager: Download report
+    Manager -> Manager: Review untuk meeting
+end
+
+note over Manager, UI
+    Manager dapat:
+    ✓ Review semua incident
+    ✓ Prioritize by severity
+    ✓ Start investigation
+    ✓ Make resolution decisions
+    ✓ Set compensation
+    ✓ Close incidents
+    ✓ Request additional info
+    ✓ View analytics & trends
+    ✓ Generate reports
+    ✓ Monitor financial impact
+end note
+
+deactivate UI
+
+@enduml

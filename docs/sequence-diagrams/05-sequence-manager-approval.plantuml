@@ -1,0 +1,178 @@
+@startuml Sequence - Manager Approval
+title Sequence Diagram - Manager Final Approval Permit
+
+actor "Manager" as Manager
+participant "UI\nManager Dashboard" as UI
+participant "ApprovalController" as ApprovalCtrl
+participant "ApprovalService" as ApprovalService
+participant "PermitRepository" as PermitRepo
+participant "QRCodeService" as QRService
+participant "OTPService" as OTPService
+participant "PDFService" as PDFService
+participant "NotificationService" as NotifService
+database "Database" as DB
+
+Manager -> UI: Login & buka dashboard
+activate UI
+UI --> Manager: Tampilkan notifikasi\n"[X] permit menunggu approval"
+
+Manager -> UI: Klik "Persetujuan"
+
+UI -> ApprovalCtrl: GET /api/approvals/pending\n?role=MANAGER
+activate ApprovalCtrl
+ApprovalCtrl -> PermitRepo: findByStatus(PIC_APPROVED)
+PermitRepo -> DB: SELECT * FROM working_permits\nWHERE status = 'PIC_APPROVED'
+DB --> PermitRepo: Permit list
+PermitRepo --> ApprovalCtrl: List<Permit>
+ApprovalCtrl --> UI: 200 OK {permits[]}
+deactivate ApprovalCtrl
+
+UI --> Manager: Tampilkan daftar permit
+
+Manager -> UI: Pilih permit
+UI --> Manager: Detail lengkap:\n- Data visitor\n- Review PIC\n- Catatan PIC\n- Dokumen
+
+Manager -> Manager: Evaluasi permohonan
+
+alt Manager Approve
+    Manager -> UI: Klik "Approve"
+    UI --> Manager: Konfirmasi approval
+    
+    Manager -> UI: Confirm
+    
+    UI -> ApprovalCtrl: POST /api/approvals/manager-approval\n{permitId, decision: APPROVED, notes}
+    activate ApprovalCtrl
+    
+    ApprovalCtrl -> ApprovalService: processManagerApproval(permitId, APPROVED, notes, managerId)
+    activate ApprovalService
+    
+    ' Update permit status
+    ApprovalService -> PermitRepo: findById(permitId)
+    PermitRepo -> DB: SELECT * FROM working_permits WHERE id = ?
+    DB --> PermitRepo: Permit
+    PermitRepo --> ApprovalService: Permit entity
+    
+    ApprovalService -> ApprovalService: permit.setStatus(APPROVED)
+    ApprovalService -> PermitRepo: save(permit)
+    PermitRepo -> DB: UPDATE working_permits\nSET status = 'APPROVED'
+    
+    ' Simpan approval record
+    ApprovalService -> DB: INSERT INTO approvals\n(permit_id, approver_id, level: MANAGER, decision)
+    
+    ' Generate QR Code
+    ApprovalService -> QRService: generateQRCode(permit)
+    activate QRService
+    QRService -> QRService: Create QR data:\n{permitId, visitorId, validFrom, validUntil}
+    QRService -> QRService: Generate QR image
+    QRService -> QRService: Save QR to /uploads/qrcodes/
+    QRService --> ApprovalService: QR code path
+    deactivate QRService
+    
+    ApprovalService -> ApprovalService: permit.setQrCodePath(path)
+    
+    ' Generate OTP
+    ApprovalService -> OTPService: generateOTP(permit)
+    activate OTPService
+    OTPService -> OTPService: Generate 6-digit OTP
+    OTPService -> OTPService: Set expiry: +24 hours
+    OTPService -> DB: INSERT INTO otps\n(permit_id, code, expires_at)
+    OTPService --> ApprovalService: OTP code
+    deactivate OTPService
+    
+    ' Generate PDF Permit
+    ApprovalService -> PDFService: generatePermitPDF(permit, qrCode)
+    activate PDFService
+    PDFService -> PDFService: Build PDF template:\n- Permit details\n- QR Code\n- Digital signature
+    PDFService -> PDFService: Save to /uploads/permits/
+    PDFService --> ApprovalService: PDF path
+    deactivate PDFService
+    
+    ApprovalService -> ApprovalService: permit.setPdfPath(path)
+    ApprovalService -> PermitRepo: save(permit)
+    PermitRepo -> DB: UPDATE working_permits\nSET qr_code, pdf_path
+    
+    ' Kirim notifikasi ke Visitor
+    ApprovalService -> NotifService: notifyVisitorApproved(permit, qrCode, otp)
+    activate NotifService
+    
+    NotifService -> NotifService: Build email dengan:\n- PDF Permit attached\n- QR Code image\n- OTP Code\n- Instruksi kedatangan
+    
+    NotifService -> NotifService: sendEmail(visitor.email, emailData)
+    
+    opt SMS enabled
+        NotifService -> NotifService: sendSMS(visitor.phone,\n"OTP: [code]")
+    end
+    
+    NotifService -> DB: INSERT INTO notifications\n(user_id, type: PERMIT_APPROVED)
+    
+    NotifService --> ApprovalService: Notifications sent
+    deactivate NotifService
+    
+    ' Notifikasi ke PIC
+    ApprovalService -> NotifService: notifyPIC(permit, "APPROVED")
+    NotifService -> NotifService: sendEmail(pic)
+    NotifService -> DB: INSERT INTO notifications FOR pic
+    
+    ' Notifikasi ke Security
+    ApprovalService -> NotifService: notifySecurityTeam(permit)
+    NotifService -> NotifService: Get security team
+    NotifService -> NotifService: sendEmail(securities)
+    NotifService -> DB: INSERT INTO notifications FOR securities
+    
+    ApprovalService --> ApprovalCtrl: ApprovalResponse\n{success, permitId, qrCode, otp}
+    deactivate ApprovalService
+    
+    ApprovalCtrl --> UI: 200 OK\n{status: "APPROVED", data}
+    deactivate ApprovalCtrl
+    
+    UI --> Manager: Tampilkan sukses:\n"Permit berhasil disetujui!\nQR Code & OTP telah dikirim ke Visitor"
+    
+else Manager Reject
+    Manager -> UI: Klik "Reject"
+    UI --> Manager: Modal:\n"Alasan penolakan (wajib)"
+    
+    Manager -> UI: Input alasan & Confirm
+    
+    UI -> ApprovalCtrl: POST /api/approvals/manager-approval\n{permitId, decision: REJECTED, reason}
+    activate ApprovalCtrl
+    
+    ApprovalCtrl -> ApprovalService: processManagerApproval(permitId, REJECTED, reason, managerId)
+    activate ApprovalService
+    
+    ApprovalService -> PermitRepo: findById(permitId)
+    PermitRepo -> DB: SELECT * FROM working_permits WHERE id = ?
+    DB --> PermitRepo: Permit
+    PermitRepo --> ApprovalService: Permit
+    
+    ApprovalService -> ApprovalService: permit.setStatus(REJECTED)
+    ApprovalService -> ApprovalService: permit.setRejectionReason(reason)
+    
+    ApprovalService -> PermitRepo: save(permit)
+    PermitRepo -> DB: UPDATE working_permits\nSET status = 'REJECTED'
+    
+    ApprovalService -> DB: INSERT INTO approvals\n(permit_id, approver_id, decision: REJECTED)
+    
+    ' Notifikasi
+    ApprovalService -> NotifService: notifyVisitor(permit, "REJECTED", reason)
+    activate NotifService
+    NotifService -> NotifService: sendEmail(visitor, reason)
+    NotifService -> DB: INSERT INTO notifications
+    NotifService --> ApprovalService: Sent
+    deactivate NotifService
+    
+    ApprovalService -> NotifService: notifyPIC(permit, "REJECTED BY MANAGER")
+    NotifService -> NotifService: sendEmail(pic)
+    
+    ApprovalService --> ApprovalCtrl: ApprovalResponse
+    deactivate ApprovalService
+    
+    ApprovalCtrl --> UI: 200 OK {status: "REJECTED"}
+    deactivate ApprovalCtrl
+    
+    UI --> Manager: Tampilkan sukses:\n"Permit ditolak\nVisitor & PIC diberi tahu"
+end
+
+UI -> UI: Refresh daftar
+deactivate UI
+
+@enduml

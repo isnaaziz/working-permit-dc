@@ -1,0 +1,122 @@
+@startuml Sistem Notifikasi
+title Activity Diagram - Sistem Notifikasi (All Roles)
+
+|Sistem|
+start
+:Event Triggered;
+
+note right
+  Events yang memicu notifikasi:
+  - Permit Created
+  - Permit Reviewed (PIC)
+  - Permit Approved/Rejected (Manager)
+  - Check-In Success
+  - Check-Out Success
+  - OTP Generated
+  - Alert/Warning
+  - System Maintenance
+end note
+
+:Identifikasi Event Type;
+:Load Notification Template;
+:Identifikasi Recipients;
+
+fork
+  :Prepare Email Notification;
+  
+  |Email Service|
+  :Build Email Content:
+  - Subject
+  - Body (HTML)
+  - Attachments (PDF, QR Code);
+  
+  :Send via SMTP;
+  
+  if (Email Sent?) then (Success)
+    |Sistem|
+    :Log Email Success;
+  else (Failed)
+    |Sistem|
+    :Log Error;
+    :Retry (max 3x);
+  endif
+  
+fork again
+  :Prepare SMS Notification;
+  
+  |SMS Gateway|
+  :Build SMS Content:
+  - Short Message
+  - OTP Code
+  - Important Info;
+  
+  :Send via Twilio/Provider;
+  
+  if (SMS Sent?) then (Success)
+    |Sistem|
+    :Log SMS Success;
+  else (Failed)
+    |Sistem|
+    :Log Error;
+    :Retry (max 3x);
+  endif
+  
+fork again
+  :Prepare In-App Notification;
+  
+  |Database|
+  :Save Notification:
+  - User ID
+  - Type
+  - Title
+  - Message
+  - Link
+  - Priority
+  - Read Status = FALSE;
+  
+  |WebSocket|
+  if (User Online?) then (Yes)
+    :Push Real-Time Notification;
+    :Show Toast/Alert;
+  else (No)
+    :Store for Later;
+  endif
+  
+end fork
+
+|User|
+:Receive Notifications;
+
+if (Notification Type?) then (Email)
+  :Open Email Client;
+  :Read Email;
+  :Click Link (opsional);
+  :Download Attachment (opsional);
+  
+elseif (SMS)
+  :Read SMS;
+  :Note OTP/Info;
+  
+else (In-App)
+  :Login ke System;
+  :See Notification Badge;
+  :Click Notification;
+  :Read Detail;
+  :Mark as Read;
+  
+  |Sistem|
+  :Update Read Status = TRUE;
+  :Update Timestamp;
+endif
+
+if (Action Required?) then (Yes)
+  :Click Link/Button;
+  :Navigate to Related Page;
+  :Complete Action;
+else (No)
+  :Close Notification;
+endif
+
+stop
+
+@enduml

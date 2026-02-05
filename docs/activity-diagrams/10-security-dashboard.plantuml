@@ -1,0 +1,216 @@
+@startuml Security Dashboard
+title Activity Diagram - Dashboard Security (Role: SECURITY)
+
+|Security|
+start
+:Login ke Sistem;
+:Buka Dashboard Security;
+
+|Sistem|
+:Load Data Dashboard:
+- Visitor Hari Ini
+- Checked-In Now
+- Jadwal Kedatangan
+- Alert & Warning;
+
+|Security|
+:Lihat Ringkasan Keamanan;
+
+:Pilih Menu;
+
+if (Menu?) then (Check-In Visitor)
+  :Scan QR Code;
+  :Verifikasi OTP;
+  :Verifikasi Biometrik;
+  :Terbitkan ID Card;
+  
+  note right
+    Detail di diagram
+    05-security-checkin
+  end note
+  
+  stop
+  
+elseif (Menu?) then (Check-Out Visitor)
+  :Scan ID Card;
+  :Verifikasi Visitor;
+  :Proses Check-Out;
+  :Nonaktifkan ID Card;
+  
+  note right
+    Detail di diagram
+    06-security-checkout
+  end note
+  
+  stop
+  
+elseif (Menu?) then (Visitor Aktif)
+  :Lihat Daftar Visitor\nSedang di Lokasi;
+  :Tampilkan Info:
+  - Nama & Foto
+  - Nomor Permit
+  - PIC yang Ditemui
+  - Waktu Check-In
+  - Durasi
+  - Lokasi/Area
+  - Status ID Card;
+  
+  :Pilih Visitor;
+  :Lihat Detail & History;
+  
+  if (Ada Masalah?) then (Ya)
+    :Buat Incident Report:
+    - Deskripsi
+    - Level Severity
+    - Foto/Evidence;
+    
+    :Notifikasi:
+    - PIC terkait
+    - Manager
+    - Admin;
+    
+    stop
+  else (Tidak)
+    stop
+  endif
+  
+elseif (Menu?) then (Jadwal Kedatangan)
+  :Lihat Jadwal Hari Ini;
+  :Filter by Waktu:
+  - Pagi (08:00-12:00)
+  - Siang (12:00-17:00)
+  - Malam (17:00-22:00);
+  
+  :Lihat Detail:
+  - Nama Visitor
+  - Perusahaan
+  - Waktu Rencana
+  - PIC yang Dituju
+  - Tujuan Kunjungan;
+  
+  :Siapkan untuk Check-In;
+  
+  if (Visitor Sudah Datang?) then (Ya)
+    :Mulai Proses Check-In;
+    stop
+  else (Belum)
+    :Set Reminder;
+    stop
+  endif
+  
+elseif (Menu?) then (Access Log)
+  :Lihat Log Akses Real-Time:
+  - Entry/Exit Events
+  - Door Access
+  - RFID Tap
+  - Area Movement;
+  
+  :Filter Log:
+  - By Visitor
+  - By Area
+  - By Time
+  - By Event Type;
+  
+  :Pilih Log Entry;
+  :Lihat Detail Event:
+  - Timestamp
+  - User/Visitor
+  - Location
+  - Action
+  - Device
+  - Status;
+  
+  :Export Log (opsional);
+  stop
+  
+elseif (Menu?) then (Scan RFID/QR)
+  :Pilih Mode Scan:
+  - QR Code Scanner
+  - RFID Reader
+  - Manual Input;
+  
+  :Scan/Input ID;
+  
+  |Sistem|
+  :Validasi ID;
+  
+  if (Valid?) then (Ya)
+    :Load Data Visitor;
+    :Tampilkan Info:
+    - Nama & Foto
+    - Status Permit
+    - Lokasi Akses Diizinkan
+    - Waktu Valid;
+    
+    :Grant/Deny Access;
+    :Log Event;
+    stop
+  else (Tidak)
+    :Tampilkan Alert\n"ID Tidak Valid";
+    :Log Rejected Access;
+    :Notifikasi Manager;
+    stop
+  endif
+  
+elseif (Menu?) then (Lost & Found)
+  :Lihat Daftar:
+  - ID Card Hilang
+  - Peralatan Tertinggal
+  - Insiden Kehilangan;
+  
+  :Pilih Aksi;
+  
+  if (Aksi?) then (Laporkan Kehilangan)
+    :Pilih Visitor/Item;
+    :Input Detail:
+    - Jenis Item
+    - Deskripsi
+    - Lokasi Terakhir
+    - Waktu Kejadian;
+    
+    :Nonaktifkan ID Card;
+    :Notifikasi:
+    - Visitor
+    - PIC
+    - Manager;
+    stop
+    
+  else (Item Ditemukan)
+    :Input Detail Item:
+    - Deskripsi
+    - Lokasi Ditemukan
+    - Kondisi;
+    
+    :Upload Foto;
+    :Notifikasi Pemilik;
+    stop
+  endif
+  
+else (Emergency)
+  :Lihat Prosedur Darurat:
+  - Evakuasi
+  - Lockdown
+  - Fire Alarm
+  - Medical Emergency;
+  
+  :Pilih Tipe Emergency;
+  :Trigger Emergency Protocol;
+  
+  |Sistem|
+  :Broadcast Alert:
+  - Semua Visitor
+  - Semua Staff
+  - Emergency Contacts;
+  
+  :Lock/Unlock Doors;
+  :Show Evacuation Routes;
+  :Call Emergency Services;
+  
+  |Security|
+  :Jalankan Prosedur;
+  :Update Status Real-Time;
+  :Dokumentasi Kejadian;
+  stop
+endif
+
+@enduml

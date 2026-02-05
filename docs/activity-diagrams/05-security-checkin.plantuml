@@ -1,0 +1,111 @@
+@startuml Check-In Visitor oleh Security
+title Activity Diagram - Check-In Visitor (Role: SECURITY)
+
+|Visitor|
+start
+:Datang ke Data Center;
+:Menunjukkan Email\nPermit (QR Code);
+
+|Security|
+:Login ke Sistem;
+:Buka Menu "Check-In Visitor";
+
+:Scan QR Code Visitor;
+
+|Sistem|
+:Validasi QR Code;
+
+if (QR Code Valid?) then (Ya)
+  :Load Data Permit;
+  :Cek Status Permit;
+  
+  if (Status = APPROVED?) then (Ya)
+    :Cek Jadwal Kunjungan;
+    
+    if (Sesuai Jadwal?) then (Ya)
+      |Security|
+      :Minta Visitor Input OTP;
+      
+      |Visitor|
+      :Input OTP Code\n(dari Email/SMS);
+      
+      |Sistem|
+      :Validasi OTP;
+      
+      if (OTP Valid?) then (Ya)
+        :Cek OTP Expired;
+        
+        if (Belum Expired?) then (Ya)
+          |Security|
+          :Verifikasi Identitas Visitor:
+          - Nama sesuai Permit
+          - Perusahaan
+          - Tujuan Kunjungan;
+          
+          |Sistem|
+          :Generate Temporary ID Card:
+          - Nama & Perusahaan
+          - Nomor Permit
+          - QR Code
+          - RFID Tag;
+            
+            :Simpan ID Card ke Database;
+            :Update Permit Status = CHECKED_IN;
+            :Catat Access Log (Entry);
+            
+            :Kirim Notifikasi ke:
+            - Visitor: "Check-In Berhasil"
+            - PIC: "Visitor sudah tiba"
+            - Manager: Info Check-In;
+            
+            |Security|
+            :Cetak ID Card Temporary;
+            :Serahkan ke Visitor;
+            :Jelaskan Prosedur Akses;
+            
+            :Tampilkan Pesan Sukses;
+            stop
+          
+        else (Ya, Sudah Expired)
+          |Security|
+          :Tampilkan Error\n"OTP Sudah Kadaluarsa";
+          :Instruksikan Visitor\nHubungi PIC;
+          stop
+        endif
+        
+      else (Tidak)
+        |Security|
+        :Tampilkan Error\n"OTP Salah";
+        :Cek Jumlah Percobaan;
+        
+        if (Percobaan < 3?) then (Ya)
+          :Minta Input Ulang;
+          stop
+        else (Tidak)
+          :Blokir Sementara;
+          :Notifikasi Manager;
+          stop
+        endif
+      endif
+      
+    else (Tidak)
+      |Security|
+      :Tampilkan Error\n"Tidak Sesuai Jadwal";
+      :Hubungi PIC;
+      stop
+    endif
+    
+  else (Tidak)
+    |Security|
+    :Tampilkan Error\n"Permit Tidak Valid";
+    :Tampilkan Status Permit;
+    stop
+  endif
+  
+else (Tidak)
+  |Security|
+  :Tampilkan Error\n"QR Code Tidak Valid";
+  stop
+endif
+
+@enduml

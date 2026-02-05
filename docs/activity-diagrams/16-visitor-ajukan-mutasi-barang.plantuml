@@ -1,0 +1,76 @@
+@startuml Visitor Request Mutasi Barang
+title Activity Diagram - Visitor Ajukan Izin Bawa Barang Keluar (Mutasi)
+
+|Visitor|
+start
+:Login ke Sistem;
+:Buka Dashboard Visitor;
+
+note right
+  Visitor ingin membawa barang
+  keluar dari Data Center
+  (milik data center atau hasil pekerjaan)
+end note
+
+:Pilih Menu "Mutasi Barang";
+:Klik "Ajukan Mutasi Barang";
+
+:Isi Form Permohonan:
+- Permit yang Aktif
+- Jenis Barang
+- Nama Barang
+- Jumlah/Unit
+- Serial Number (jika ada)
+- Tujuan Mutasi
+- Alasan membawa keluar
+- Tanggal Rencana Keluar;
+
+:Upload Dokumen Pendukung:
+- Surat Izin (opsional)
+- Form Permintaan
+- Foto Barang
+- Dokumen Lainnya;
+
+:Submit Permohonan;
+
+|Sistem|
+:Validasi Form:
+- Cek Field Wajib
+- Cek Permit Status (CHECKED_IN?)
+- Validasi Tanggal
+- Validasi File Upload;
+
+if (Data Valid?) then (Ya)
+  :Generate ID Mutasi;
+  :Set Status = PENDING_PIC_REVIEW;
+  :Link ke Permit Aktif;
+  :Simpan ke Database;
+  
+  :Kirim Notifikasi ke PIC:
+  - Email
+  - In-App Notification
+  - Detail Permohonan;
+  
+  |Visitor|
+  :Tampilkan Pesan Sukses;
+  :Tampilkan Nomor Mutasi;
+  :Redirect ke Daftar Mutasi;
+  
+  note right
+    Visitor dapat:
+    - Lihat Status Mutasi
+    - Edit (jika masih PENDING)
+    - Batalkan Mutasi
+    - Download Surat Izin (jika APPROVED)
+  end note
+  
+  stop
+  
+else (Tidak)
+  |Visitor|
+  :Tampilkan Pesan Error;
+  :Kembali ke Form;
+  stop
+endif
+
+@enduml

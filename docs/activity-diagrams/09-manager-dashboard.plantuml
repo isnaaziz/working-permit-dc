@@ -1,0 +1,163 @@
+@startuml Manager Dashboard
+title Activity Diagram - Dashboard Manager (Role: MANAGER)
+
+|Manager|
+start
+:Login ke Sistem;
+:Buka Dashboard Manager;
+
+|Sistem|
+:Load Data Dashboard:
+- Permit Menunggu Approval
+- Permit Disetujui Hari Ini
+- Total Visitor Aktif
+- Statistik Bulanan
+- Alert & Notifikasi;
+
+|Manager|
+:Lihat Ringkasan Eksekutif;
+
+:Pilih Menu;
+
+if (Menu?) then (Approval)
+  :Lihat Permit PIC_APPROVED;
+  :Filter/Search:
+  - By Tanggal
+  - By PIC
+  - By Priority
+  - By Lokasi;
+  
+  :Pilih Permit;
+  :Review & Approve/Reject;
+  
+  note right
+    Detail di diagram
+    04-manager-approval-permit
+  end note
+  
+  stop
+  
+elseif (Menu?) then (Monitor Real-Time)
+  :Lihat Dashboard Real-Time:
+  - Visitor Sedang di Lokasi
+  - Status per Area
+  - Alert Security
+  - Access Log Live;
+  
+  :Pilih Visitor/Area;
+  :Lihat Detail Aktivitas;
+  
+  if (Ada Anomali?) then (Ya)
+    :Buat Incident Report;
+    :Notifikasi Security;
+    stop
+  else (Tidak)
+    stop
+  endif
+  
+elseif (Menu?) then (Kelola User)
+  :Lihat Daftar User:
+  - VISITOR
+  - PIC
+  - SECURITY
+  - MANAGER
+  - ADMIN;
+  
+  :Pilih Aksi;
+  
+  if (Aksi?) then (Tambah User)
+    :Isi Form User Baru;
+    :Set Role & Permission;
+    :Simpan User;
+    stop
+    
+  elseif (Aksi?) then (Edit User)
+    :Pilih User;
+    :Edit Data/Role;
+    :Update User;
+    stop
+    
+  elseif (Aksi?) then (Nonaktifkan User)
+    :Pilih User;
+    :Konfirmasi Nonaktifkan;
+    :Set Status = INACTIVE;
+    stop
+    
+  else (Reset Password)
+    :Pilih User;
+    :Generate Password Baru;
+    :Kirim via Email;
+    stop
+  endif
+  
+elseif (Menu?) then (Laporan Analytics)
+  :Pilih Dashboard Analytics:
+  - Statistik Permit
+  - Trend Kunjungan
+  - Performance PIC
+  - Security Metrics
+  - Area Usage;
+  
+  :Pilih Periode:
+  - Harian
+  - Mingguan
+  - Bulanan
+  - Tahunan
+  - Custom;
+  
+  |Sistem|
+  :Generate Analytics:
+  - Grafik Interaktif
+  - Heatmap
+  - Trend Analysis
+  - Comparison;
+  
+  |Manager|
+  :Analisis Data;
+  :Export Report;
+  stop
+  
+elseif (Menu?) then (Konfigurasi Sistem)
+  :Akses Pengaturan:
+  - Approval Workflow
+  - OTP Settings
+  - QR Code Settings
+  - Email Templates
+  - Security Rules
+  - Area Access Rules;
+  
+  :Edit Konfigurasi;
+  :Simpan Perubahan;
+  
+  |Sistem|
+  :Apply Konfigurasi Baru;
+  :Audit Log Perubahan;
+  
+  |Manager|
+  :Tampilkan Pesan Sukses;
+  stop
+  
+else (Audit Trail)
+  :Pilih Jenis Audit:
+  - User Activities
+  - Approval History
+  - Access Logs
+  - System Changes
+  - Security Events;
+  
+  :Set Filter:
+  - Tanggal
+  - User
+  - Action Type
+  - Severity;
+  
+  |Sistem|
+  :Load Audit Logs;
+  
+  |Manager|
+  :Review Logs;
+  :Export jika Perlu;
+  stop
+endif
+
+@enduml

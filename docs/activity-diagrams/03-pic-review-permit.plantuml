@@ -1,0 +1,68 @@
+@startuml Review Izin Kerja oleh PIC
+title Activity Diagram - Review Izin Kerja (Role: PIC)
+
+|PIC|
+start
+:Login ke Sistem;
+:Buka Dashboard PIC;
+
+if (Ada Notifikasi Baru?) then (Ya)
+  :Lihat Notifikasi\nPermohonan Izin Baru;
+endif
+
+:Pilih Menu "Daftar Permohonan";
+:Lihat Daftar Permit\ndengan Status PENDING;
+
+:Pilih Permit yang\nAkan Direview;
+
+:Lihat Detail Permohonan:
+- Data Pemohon
+- Tujuan Kunjungan
+- Jadwal Kunjungan
+- Lokasi Kerja
+- Dokumen Pendukung;
+
+:Evaluasi Permohonan;
+
+if (Permohonan Layak?) then (Ya)
+  |PIC|
+  :Klik Tombol "Approve";
+  :Isi Catatan PIC (opsional);
+  
+  |Sistem|
+  :Update Status = PIC_APPROVED;
+  :Simpan Catatan PIC;
+  :Catat Waktu Review;
+  
+  :Kirim Notifikasi ke Manager:
+  - Email
+  - In-App Notification;
+  
+  :Kirim Notifikasi ke Visitor:
+  - "Permohonan telah direview PIC"
+  - "Menunggu approval Manager";
+  
+  |PIC|
+  :Tampilkan Pesan Sukses;
+  stop
+  
+else (Tidak)
+  |PIC|
+  :Klik Tombol "Reject";
+  :Isi Alasan Penolakan\n(Wajib);
+  
+  |Sistem|
+  :Update Status = REJECTED;
+  :Simpan Alasan Penolakan;
+  :Catat Waktu Review;
+  
+  :Kirim Notifikasi ke Visitor:
+  - Email dengan Alasan
+  - In-App Notification;
+  
+  |PIC|
+  :Tampilkan Pesan Sukses;
+  stop
+endif
+
+@enduml

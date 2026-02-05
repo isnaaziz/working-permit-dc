@@ -1,0 +1,140 @@
+@startuml Security Verifikasi Mutasi Keluar
+title Activity Diagram - Security Verifikasi Mutasi Barang Keluar
+
+|Visitor|
+start
+:Selesai Bekerja;
+:Akan Membawa Barang Keluar;
+:Datang ke Pos Security;
+
+note right
+  Visitor membawa:
+  - Barang yang akan dibawa keluar
+  - Surat Izin Mutasi (PDF/Print)
+  - QR Code Mutasi
+end note
+
+|Security|
+:Buka Menu "Verifikasi Mutasi Keluar";
+
+:Scan QR Code Mutasi;
+
+|Sistem|
+:Validasi QR Code;
+
+if (QR Code Valid?) then (Ya)
+  :Load Data Mutasi;
+  :Cek Status Mutasi;
+  
+  if (Status = APPROVED?) then (Ya)
+    :Cek Tanggal Valid;
+    
+    if (Masih Valid?) then (Ya)
+      |Security|
+      :Tampilkan Detail Mutasi:
+      - Nama Visitor
+      - Barang yang Diizinkan
+      - Jumlah
+      - Serial Number
+      - Tanggal Valid
+      - Manager yang Approve;
+      
+      :Cocokkan Barang Fisik\ndengan Surat Izin;
+      
+      if (Barang Cocok?) then (Ya)
+        |Security|
+        :Verifikasi Detail:
+        - Nama Barang ✓
+        - Jumlah ✓
+        - Serial Number ✓
+        - Kondisi Barang;
+        
+        :Foto Barang sebagai Evidence;
+        
+        :Klik "Approve Mutasi Keluar";
+        
+        |Sistem|
+        :Update Status = COMPLETED;
+        :Catat Waktu Keluar Aktual;
+        :Simpan Foto Evidence;
+        :Update Access Log;
+        
+        :Generate Laporan Mutasi:
+        - Waktu Approval Manager
+        - Waktu Keluar Aktual
+        - Security yang Handle
+        - Foto Barang
+        - Status: SUCCESS;
+        
+        :Kirim Notifikasi ke:
+        - Visitor: "Barang berhasil keluar"
+        - PIC: Laporan Mutasi
+        - Manager: Summary;
+        
+        |Security|
+        :Tampilkan Pesan Sukses;
+        :Izinkan Visitor Keluar\ndengan Barang;
+        
+        note right
+          Barang berhasil keluar
+          dengan izin resmi
+        end note
+        
+        stop
+        
+      else (Tidak Cocok)
+        |Security|
+        :Tampilkan Error\n"Barang Tidak Sesuai Izin";
+        
+        if (Perbedaan?) then (Jumlah Lebih)
+          :Alert: "Jumlah melebihi izin";
+          :Hubungi Manager;
+          stop
+          
+        elseif (Barang Berbeda)
+          :Alert: "Barang tidak sesuai";
+          :Tahan Barang & Visitor;
+          :Hubungi Manager;
+          stop
+          
+        else (Serial Number Beda)
+          :Alert: "Serial number tidak cocok";
+          :Verifikasi Ulang;
+          stop
+        endif
+      endif
+      
+    else (Ya, Sudah Expired)
+      |Security|
+      :Tampilkan Error\n"Surat Izin Sudah Kadaluarsa";
+      :Instruksikan Visitor\nHubungi Manager untuk Perpanjang;
+      stop
+    endif
+    
+  else (Tidak)
+    |Security|
+    :Tampilkan Error\n"Mutasi Tidak Valid";
+    :Tampilkan Status Mutasi;
+    stop
+  endif
+  
+else (Tidak)
+  |Security|
+  :Tampilkan Error\n"QR Code Tidak Valid";
+  :Minta Visitor Tunjukkan\nSurat Izin;
+  
+  alt Visitor tidak punya surat izin
+    |Security|
+    :Tahan Barang;
+    :Buat Incident Report;
+    :Hubungi Manager;
+    stop
+  else Visitor punya surat izin
+    |Security|
+    :Input Manual Nomor Mutasi;
+    :Verifikasi Manual;
+    stop
+  endif
+endif
+
+@enduml

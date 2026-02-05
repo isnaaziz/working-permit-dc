@@ -1,0 +1,62 @@
+@startuml Pengajuan Izin Kerja oleh Visitor
+title Activity Diagram - Pengajuan Izin Kerja (Role: VISITOR)
+
+|Visitor|
+start
+:Login ke Sistem;
+:Buka Dashboard Visitor;
+:Pilih Menu "Buat Izin Kerja Baru";
+
+:Isi Form Permohonan:
+- Tujuan Kunjungan
+- Tanggal & Waktu Mulai
+- Tanggal & Waktu Selesai
+- Lokasi/Area Kerja
+- Deskripsi Pekerjaan
+- Alat/Peralatan yang Dibawa;
+
+:Upload Dokumen Pendukung:
+- Surat Tugas (opsional)
+- SOP Kerja (opsional)
+- Dokumen Lainnya;
+
+:Pilih PIC yang Dituju;
+
+|Sistem|
+:Validasi Form:
+- Cek Field Wajib
+- Cek Format Tanggal
+- Cek Ukuran File Upload;
+
+if (Data Valid?) then (Ya)
+  :Generate ID Permit;
+  :Set Status = PENDING;
+  :Simpan ke Database;
+  
+  :Kirim Notifikasi ke PIC:
+  - Email
+  - In-App Notification;
+  
+  |Visitor|
+  :Tampilkan Pesan Sukses;
+  :Tampilkan Nomor Permit;
+  :Redirect ke Daftar Permit;
+  
+  note right
+    Visitor dapat:
+    - Melihat Status Permit
+    - Edit Permit (jika masih PENDING)
+    - Batalkan Permit
+    - Download PDF Permit (jika APPROVED)
+  end note
+  
+  stop
+  
+else (Tidak)
+  |Visitor|
+  :Tampilkan Pesan Error;
+  :Kembali ke Form;
+  stop
+endif
+
+@enduml

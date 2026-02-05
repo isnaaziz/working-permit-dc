@@ -1,0 +1,143 @@
+@startuml Sequence - PIC Review Permit
+title Sequence Diagram - PIC Review & Approve/Reject Permit
+
+actor "PIC" as PIC
+participant "UI\nPIC Dashboard" as UI
+participant "ApprovalController" as ApprovalCtrl
+participant "ApprovalService" as ApprovalService
+participant "PermitRepository" as PermitRepo
+participant "ApprovalRepository" as ApprovalRepo
+participant "NotificationService" as NotifService
+database "Database" as DB
+
+PIC -> UI: Login & buka dashboard
+activate UI
+UI --> PIC: Tampilkan notifikasi\n"[X] permit baru menunggu review"
+
+PIC -> UI: Klik "Daftar Permohonan"
+
+UI -> ApprovalCtrl: GET /api/approvals/pending\n?role=PIC
+activate ApprovalCtrl
+
+ApprovalCtrl -> PermitRepo: findByStatus(PENDING)
+activate PermitRepo
+PermitRepo -> DB: SELECT * FROM working_permits\nWHERE status = 'PENDING'
+activate DB
+DB --> PermitRepo: Permit list
+deactivate DB
+PermitRepo --> ApprovalCtrl: List<Permit>
+deactivate PermitRepo
+
+ApprovalCtrl --> UI: 200 OK\n{permits[]}
+deactivate ApprovalCtrl
+
+UI --> PIC: Tampilkan daftar permit
+
+PIC -> UI: Pilih permit untuk direview
+UI --> PIC: Tampilkan detail lengkap:\n- Data visitor\n- Tujuan & jadwal\n- Dokumen
+
+PIC -> PIC: Evaluasi permohonan
+
+alt PIC Approve
+    PIC -> UI: Klik "Approve"
+    UI --> PIC: Modal konfirmasi:\n"Tambah catatan? (opsional)"
+    
+    PIC -> UI: Input catatan (opsional)\n& Confirm
+    
+    UI -> ApprovalCtrl: POST /api/approvals/pic-review\n{permitId, decision: APPROVED, notes}
+    activate ApprovalCtrl
+    
+    ApprovalCtrl -> ApprovalCtrl: Validate JWT & role = PIC
+    
+    ApprovalCtrl -> ApprovalService: processPICReview(permitId, decision, notes, picId)
+    activate ApprovalService
+    
+    ' Update permit status
+    ApprovalService -> PermitRepo: findById(permitId)
+    PermitRepo -> DB: SELECT * FROM working_permits WHERE id = ?
+    DB --> PermitRepo: Permit data
+    PermitRepo --> ApprovalService: Permit entity
+    
+    ApprovalService -> ApprovalService: permit.setStatus(PIC_APPROVED)
+    
+    ApprovalService -> PermitRepo: save(permit)
+    PermitRepo -> DB: UPDATE working_permits\nSET status = 'PIC_APPROVED'
+    
+    ' Simpan approval record
+    ApprovalService -> ApprovalRepo: save(approval)
+    activate ApprovalRepo
+    ApprovalRepo -> DB: INSERT INTO approvals\n(permit_id, approver_id, level, decision, notes)
+    ApprovalRepo --> ApprovalService: Approval saved
+    deactivate ApprovalRepo
+    
+    ' Notifikasi ke Manager
+    ApprovalService -> NotifService: notifyManager(permit)
+    activate NotifService
+    NotifService -> NotifService: Get Manager list
+    NotifService -> NotifService: sendEmail(managers)
+    NotifService -> DB: INSERT INTO notifications\nFOR managers
+    NotifService --> ApprovalService: Sent
+    deactivate NotifService
+    
+    ' Notifikasi ke Visitor
+    ApprovalService -> NotifService: notifyVisitor(permit, "PIC_APPROVED")
+    NotifService -> NotifService: sendEmail(visitor)
+    NotifService -> DB: INSERT INTO notifications\nFOR visitor
+    
+    ApprovalService --> ApprovalCtrl: ReviewResponse\n{success, message}
+    deactivate ApprovalService
+    
+    ApprovalCtrl --> UI: 200 OK\n{status: "PIC_APPROVED"}
+    deactivate ApprovalCtrl
+    
+    UI --> PIC: Tampilkan sukses:\n"Permit berhasil di-approve!\nMenunggu approval Manager"
+    
+else PIC Reject
+    PIC -> UI: Klik "Reject"
+    UI --> PIC: Modal:\n"Alasan penolakan (wajib)"
+    
+    PIC -> UI: Input alasan penolakan\n& Confirm
+    
+    UI -> ApprovalCtrl: POST /api/approvals/pic-review\n{permitId, decision: REJECTED, reason}
+    activate ApprovalCtrl
+    
+    ApprovalCtrl -> ApprovalService: processPICReview(permitId, REJECTED, reason, picId)
+    activate ApprovalService
+    
+    ' Update permit
+    ApprovalService -> PermitRepo: findById(permitId)
+    PermitRepo -> DB: SELECT * FROM working_permits WHERE id = ?
+    DB --> PermitRepo: Permit data
+    PermitRepo --> ApprovalService: Permit
+    
+    ApprovalService -> ApprovalService: permit.setStatus(REJECTED)
+    ApprovalService -> ApprovalService: permit.setRejectionReason(reason)
+    
+    ApprovalService -> PermitRepo: save(permit)
+    PermitRepo -> DB: UPDATE working_permits\nSET status = 'REJECTED'
+    
+    ' Simpan approval record
+    ApprovalService -> ApprovalRepo: save(approval)
+    ApprovalRepo -> DB: INSERT INTO approvals\n(permit_id, approver_id, decision, reason)
+    
+    ' Notifikasi ke Visitor
+    ApprovalService -> NotifService: notifyVisitor(permit, "REJECTED", reason)
+    activate NotifService
+    NotifService -> NotifService: sendEmail(visitor, reason)
+    NotifService -> DB: INSERT INTO notifications
+    NotifService --> ApprovalService: Sent
+    deactivate NotifService
+    
+    ApprovalService --> ApprovalCtrl: ReviewResponse
+    deactivate ApprovalService
+    
+    ApprovalCtrl --> UI: 200 OK\n{status: "REJECTED"}
+    deactivate ApprovalCtrl
+    
+    UI --> PIC: Tampilkan sukses:\n"Permit telah ditolak\nVisitor akan diberi tahu"
+end
+
+UI -> UI: Refresh daftar permit
+deactivate UI
+
+@enduml

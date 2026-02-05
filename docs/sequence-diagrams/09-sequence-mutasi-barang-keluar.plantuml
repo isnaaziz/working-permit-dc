@@ -1,0 +1,213 @@
+@startuml Sequence - Mutasi Barang Keluar
+title Sequence Diagram - Security Verifikasi Barang Keluar
+
+actor "Visitor" as Visitor
+actor "Security" as Security
+participant "UI\nSecurity Dashboard" as UI
+participant "MutasiController" as MutasiCtrl
+participant "MutasiService" as MutasiService
+participant "MutasiRepository" as MutasiRepo
+participant "IncidentService" as IncidentService
+participant "NotificationService" as NotifService
+database "Database" as DB
+
+note over Visitor, Security
+  Proses ini dilakukan SAAT check-out
+  SEBELUM proses check-out final
+end note
+
+Visitor -> Security: "Saya mau check-out"
+activate Security
+
+Security -> Visitor: "Bawa semua barang\ndan label?"
+Visitor --> Security: "Ya, ini barangnya"
+
+Security -> UI: Buka menu "Verifikasi Barang Keluar"
+activate UI
+
+Security -> UI: Scan label barang pertama
+UI -> UI: Decode QR/Barcode
+
+UI -> MutasiCtrl: GET /api/mutasi/barang\n?permitId={id}
+activate MutasiCtrl
+
+MutasiCtrl -> MutasiRepo: findByPermitIdAndStatus(permitId, MASUK)
+activate MutasiRepo
+MutasiRepo -> DB: SELECT * FROM mutasi_barang\nWHERE permit_id = ?\nAND status = 'MASUK'
+activate DB
+DB --> MutasiRepo: Barang list
+deactivate DB
+MutasiRepo --> MutasiCtrl: List<MutasiBarang>
+deactivate MutasiRepo
+
+MutasiCtrl --> UI: 200 OK {barangList[]}
+deactivate MutasiCtrl
+
+UI --> Security: Daftar barang terdaftar:\n[X] items
+
+loop Verifikasi setiap barang
+    Security -> Security: Cocokkan label\ndengan barang fisik
+    
+    Security -> Visitor: "Tunjukkan barang:\n[Nama Barang]"
+    Visitor -> Security: Tunjukkan barang
+    
+    Security -> Security: Cek kondisi barang
+    
+    alt Kondisi OK (sama dengan masuk)
+        Security -> UI: Centang item: OK
+        UI -> UI: status = OK
+        
+    else Ada kerusakan
+        Security -> UI: Pilih "Ada Kerusakan"
+        UI --> Security: Modal: Detail kerusakan
+        
+        Security -> UI: Input:\n- Deskripsi kerusakan\n- Foto kerusakan
+        
+        UI -> UI: Upload foto
+        UI -> UI: status = RUSAK
+        
+    else Barang hilang
+        Security -> UI: Pilih "Barang Hilang"
+        UI -> UI: status = HILANG
+    end
+end
+
+Security -> Security: Hitung total:\n- OK\n- Rusak\n- Hilang
+
+alt Semua barang OK
+    Security -> UI: Klik "Approve Check-Out"
+    
+    UI -> MutasiCtrl: POST /api/mutasi/barang-keluar\n{permitId, verificationData}
+    activate MutasiCtrl
+    
+    MutasiCtrl -> MutasiService: processBarangKeluar(permitId, verificationData)
+    activate MutasiService
+    
+    ' Update status semua barang
+    loop Untuk setiap barang
+        MutasiService -> MutasiRepo: findById(mutasiId)
+        MutasiRepo -> DB: SELECT * FROM mutasi_barang WHERE id = ?
+        DB --> MutasiRepo: MutasiBarang
+        MutasiRepo --> MutasiService: MutasiBarang entity
+        
+        MutasiService -> MutasiService: barang.setStatus(KELUAR)
+        MutasiService -> MutasiService: barang.setWaktuKeluar(now)
+        MutasiService -> MutasiService: barang.setKondisiKeluar(OK)
+        
+        MutasiService -> MutasiRepo: save(barang)
+        MutasiRepo -> DB: UPDATE mutasi_barang\nSET status = 'KELUAR'
+    end
+    
+    ' Generate laporan mutasi
+    MutasiService -> MutasiService: generateLaporanMutasi(permitId)
+    
+    ' Log activity
+    MutasiService -> DB: INSERT INTO access_logs\n(permit_id, action: BARANG_KELUAR,\nstatus: ALL_OK)
+    
+    ' Notifikasi
+    MutasiService -> NotifService: notifyBarangKeluar(permit, status: OK)
+    activate NotifService
+    NotifService -> NotifService: sendEmail(visitor, "Barang keluar OK")
+    NotifService -> NotifService: sendEmail(pic, "Semua barang OK")
+    NotifService -> DB: INSERT INTO notifications
+    NotifService --> MutasiService: Sent
+    deactivate NotifService
+    
+    MutasiService --> MutasiCtrl: VerifikasiResponse\n{success, allOK: true}
+    deactivate MutasiService
+    
+    MutasiCtrl --> UI: 200 OK {status: "ALL_OK"}
+    deactivate MutasiCtrl
+    
+    UI --> Security: "Semua barang OK ✓\nLanjutkan check-out"
+    
+    Security -> Security: Lepas/hancurkan label
+    Security -> Visitor: "Barang lengkap,\nsilakan keluar"
+    
+else Ada barang rusak/hilang
+    Security -> UI: Klik "Laporkan Masalah"
+    
+    UI -> MutasiCtrl: POST /api/mutasi/barang-keluar\n{permitId, verificationData,\nhasIssues: true}
+    activate MutasiCtrl
+    
+    MutasiCtrl -> MutasiService: processBarangKeluarWithIssues(permitId, issues)
+    activate MutasiService
+    
+    ' Update status barang dengan masalah
+    loop Untuk barang bermasalah
+        MutasiService -> MutasiRepo: findById(mutasiId)
+        MutasiRepo -> DB: SELECT * FROM mutasi_barang WHERE id = ?
+        DB --> MutasiRepo: MutasiBarang
+        MutasiRepo --> MutasiService: MutasiBarang
+        
+        alt Barang rusak
+            MutasiService -> MutasiService: barang.setStatus(KELUAR_RUSAK)
+            MutasiService -> MutasiService: barang.setKondisiKeluar(RUSAK)
+            MutasiService -> MutasiService: barang.setDeskripsiKerusakan(desc)
+            
+        else Barang hilang
+            MutasiService -> MutasiService: barang.setStatus(HILANG)
+        end
+        
+        MutasiService -> MutasiRepo: save(barang)
+        MutasiRepo -> DB: UPDATE mutasi_barang
+    end
+    
+    ' Buat incident report
+    MutasiService -> IncidentService: createIncident(permit, issues)
+    activate IncidentService
+    
+    IncidentService -> IncidentService: Build incident:\n- Type: BARANG_RUSAK/HILANG\n- Details\n- Evidence (photos)
+    
+    IncidentService -> DB: INSERT INTO incidents\n(permit_id, type, severity,\ndescription, photos)
+    activate DB
+    DB --> IncidentService: Incident created
+    deactivate DB
+    
+    IncidentService --> MutasiService: Incident ID
+    deactivate IncidentService
+    
+    ' Notifikasi URGENT
+    MutasiService -> NotifService: notifyIncident(permit, incident)
+    activate NotifService
+    
+    NotifService -> NotifService: Build URGENT notification
+    
+    ' Ke Manager (IMMEDIATE)
+    NotifService -> NotifService: sendEmail(manager,\n"URGENT: Barang rusak/hilang",\npriority: HIGH)
+    
+    ' Ke PIC
+    NotifService -> NotifService: sendEmail(pic,\n"Alert: Masalah barang visitor")
+    
+    ' Ke Visitor
+    NotifService -> NotifService: sendEmail(visitor,\n"Incident report")
+    
+    NotifService -> DB: INSERT INTO notifications\n(priority: HIGH)
+    NotifService --> MutasiService: Sent
+    deactivate NotifService
+    
+    MutasiService --> MutasiCtrl: VerifikasiResponse\n{hasIssues: true, incidentId}
+    deactivate MutasiService
+    
+    MutasiCtrl --> UI: 200 OK {status: "HAS_ISSUES"}
+    deactivate MutasiCtrl
+    
+    UI --> Security: "Ada masalah!\nIncident Report dibuat"
+    
+    Security -> Security: Print Berita Acara
+    
+    Security -> Visitor: "Perlu tanda tangan\nBerita Acara"
+    Visitor -> Security: Tanda tangan BA
+    
+    Security -> UI: Upload BA yang ditandatangani
+    UI -> DB: UPDATE incidents\nSET berita_acara_path = ?
+    
+    UI --> Security: "BA tersimpan\nMenunggu review Manager"
+    
+    Security -> Visitor: "Silakan menunggu\nkonfirmasi Manager"
+end
+
+deactivate UI
+deactivate Security
+
+@enduml

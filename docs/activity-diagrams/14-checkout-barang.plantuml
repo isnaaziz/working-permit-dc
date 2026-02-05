@@ -1,0 +1,181 @@
+@startuml Check-Out Barang
+title Activity Diagram - Check-Out Barang & Peralatan (Role: SECURITY)
+
+|Visitor|
+start
+:Selesai Bekerja;
+:Kembali ke Pos Security;
+:Bawa Semua Barang & Label;
+
+|Security|
+:Proses Check-Out Visitor;
+:Buka Menu "Verifikasi Barang Keluar";
+
+:Scan QR Code/Label Barang;
+
+|Sistem|
+:Load Data Barang Masuk;
+:Tampilkan Daftar Barang Terdaftar;
+
+|Security|
+:Cocokkan dengan Barang Fisik;
+
+:Verifikasi Setiap Item;
+
+fork
+  :Cek Kondisi Barang;
+  
+  if (Kondisi?) then (Sama dengan Masuk)
+    :Status = OK;
+  else (Ada Kerusakan)
+    :Foto Kerusakan;
+    :Catat Detail Kerusakan;
+    :Status = RUSAK;
+  endif
+  
+fork again
+  :Cek Jumlah;
+  
+  if (Jumlah?) then (Sesuai)
+    :Status = LENGKAP;
+  else (Kurang)
+    :Catat Item yang Hilang;
+    :Status = TIDAK_LENGKAP;
+  endif
+  
+end fork
+
+if (Semua Barang OK?) then (Ya)
+  |Security|
+  :Klik "Approve Check-Out Barang";
+  
+  |Sistem|
+  :Update Status = KELUAR;
+  :Catat Waktu Keluar;
+  :Hitung Durasi di Lokasi;
+  
+  :Generate Laporan Mutasi:
+  - Waktu Masuk
+  - Waktu Keluar
+  - Durasi
+  - Kondisi Masuk vs Keluar
+  - Foto Evidence;
+  
+  :Update Access Log;
+  
+  :Kirim Notifikasi ke:
+  - Visitor: "Barang Berhasil Keluar"
+  - PIC: Laporan Mutasi Barang
+  - Manager: Summary;
+  
+  |Security|
+  :Lepas/Hancurkan Label;
+  :Izinkan Visitor Keluar;
+  :Tampilkan Pesan Sukses;
+  stop
+  
+else (Ada Masalah)
+  |Security|
+  :Buat Incident Report;
+  
+  if (Masalah?) then (Barang Rusak)
+    :Dokumentasi Kerusakan:
+    - Foto Detail
+    - Keterangan
+    - Nilai Kerugian (estimasi);
+    
+    :Notifikasi:
+    - PIC (Immediate)
+    - Manager (Alert)
+    - Visitor (Warning);
+    
+    :Set Status = KELUAR_DENGAN_KERUSAKAN;
+    
+    :Minta Tanda Tangan\nBerita Acara;
+    
+    |Visitor|
+    :Tandatangan BA;
+    
+    |Security|
+    :Simpan BA;
+    :Izinkan Keluar dengan Catatan;
+    stop
+    
+  elseif (Masalah?) then (Barang Hilang)
+    :Dokumentasi Kehilangan:
+    - Item yang Hilang
+    - Serial Number
+    - Nilai Barang
+    - Keterangan;
+    
+    :Notifikasi URGENT ke:
+    - Manager (Immediate)
+    - PIC (Alert)
+    - Admin (Log);
+    
+    :Set Status = KELUAR_DENGAN_KEHILANGAN;
+    
+    :Buat Laporan Kehilangan;
+    
+    :Tahan Sementara;
+    
+    |Manager|
+    :Review Incident;
+    
+    if (Keputusan?) then (Izinkan Keluar)
+      |Security|
+      :Minta Tanda Tangan BA;
+      :Catat Komitmen Penggantian;
+      :Izinkan Keluar;
+      stop
+    else (Investigasi Lanjut)
+      :Lakukan Investigasi:
+      - Cek CCTV
+      - Interview
+      - Area Search;
+      stop
+    endif
+    
+  elseif (Masalah?) then (Barang Tambahan)
+    :Barang Tidak Terdaftar\nsaat Masuk;
+    
+    :Dokumentasi:
+    - Foto Barang
+    - Detail
+    - Asal Barang;
+    
+    :Verifikasi dengan PIC;
+    
+    |PIC|
+    if (PIC Konfirmasi?) then (Sah)
+      |Security|
+      :Catat sebagai\nBarang dari Data Center;
+      
+      :Minta Surat Jalan/BA;
+      
+      :Izinkan Keluar;
+      stop
+    else (Tidak Sah)
+      |Security|
+      :Tahan Barang;
+      :Notifikasi Manager;
+      :Investigasi;
+      stop
+    endif
+    
+  else (Barang Berbahaya)
+    :Deteksi Barang\nTidak Diizinkan;
+    
+    :Tahan Barang & Visitor;
+    
+    :Notifikasi URGENT:
+    - Manager
+    - Security Chief
+    - Admin;
+    
+    :Tunggu Instruksi;
+    stop
+  endif
+endif
+
+@enduml

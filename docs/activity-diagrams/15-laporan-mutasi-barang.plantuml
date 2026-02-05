@@ -1,0 +1,161 @@
+@startuml Laporan Mutasi Barang
+title Activity Diagram - Laporan Mutasi Barang (Role: MANAGER/SECURITY)
+
+|Manager/Security|
+start
+:Login ke Sistem;
+:Buka Menu "Laporan Mutasi Barang";
+
+:Pilih Jenis Laporan;
+
+if (Laporan?) then (Barang Masuk Hari Ini)
+  |Sistem|
+  :Load Data Barang Masuk:
+  - Visitor
+  - Waktu Masuk
+  - Jenis Barang
+  - Jumlah
+  - Kondisi
+  - Status;
+  
+  |Manager/Security|
+  :Lihat Daftar Real-Time;
+  :Filter/Sort:
+  - By Kategori
+  - By Visitor
+  - By PIC
+  - By Waktu;
+  
+  :Export (PDF/Excel);
+  stop
+  
+elseif (Laporan?) then (Barang Masih di Lokasi)
+  |Sistem|
+  :Load Barang dengan Status MASUK;
+  :Hitung Durasi di Lokasi;
+  
+  |Manager/Security|
+  :Lihat Daftar:
+  - Visitor
+  - Barang
+  - Waktu Masuk
+  - Durasi
+  - PIC
+  - Status Permit;
+  
+  if (Ada Barang > 12 Jam?) then (Ya)
+    :Highlight sebagai Alert;
+    :Notifikasi PIC;
+  endif
+  
+  :Monitor Real-Time;
+  stop
+  
+elseif (Laporan?) then (History Mutasi)
+  :Set Filter:
+  - Tanggal (Range)
+  - Visitor
+  - Jenis Barang
+  - Status (Keluar Normal/Ada Masalah);
+  
+  |Sistem|
+  :Query Database;
+  :Generate Laporan:
+  - Total Barang Masuk
+  - Total Barang Keluar
+  - Barang dengan Masalah
+  - Statistik per Kategori
+  - Grafik Trend;
+  
+  |Manager/Security|
+  :Review Laporan;
+  :Analisis Data;
+  :Export Report;
+  stop
+  
+elseif (Laporan?) then (Incident Report)
+  |Sistem|
+  :Load Incident:
+  - Barang Rusak
+  - Barang Hilang
+  - Barang Tidak Sah
+  - Barang Berbahaya;
+  
+  :Group by Severity:
+  - Critical
+  - High
+  - Medium
+  - Low;
+  
+  |Manager/Security|
+  :Lihat Detail Incident:
+  - Visitor Terkait
+  - Kronologi
+  - Evidence (Foto/Video)
+  - Status Penanganan
+  - Follow-up Action;
+  
+  :Pilih Incident;
+  :Lihat Detail Lengkap;
+  :Update Status Penanganan;
+  stop
+  
+elseif (Laporan?) then (Statistik Bulanan)
+  :Pilih Bulan & Tahun;
+  
+  |Sistem|
+  :Generate Analytics:
+  - Total Transaksi Barang
+  - Kategori Terbanyak
+  - Rata-rata Durasi
+  - Incident Rate
+  - Top Visitor (by Items)
+  - Peak Hours
+  - Trend Analysis;
+  
+  :Create Visualisasi:
+  - Bar Chart
+  - Line Chart
+  - Pie Chart
+  - Heatmap;
+  
+  |Manager/Security|
+  :Review Analytics;
+  :Buat Kesimpulan;
+  :Export untuk Presentasi;
+  stop
+  
+else (Audit Trail)
+  :Set Filter:
+  - Tanggal
+  - User (Security)
+  - Action Type
+  - Visitor;
+  
+  |Sistem|
+  :Load Audit Log:
+  - Waktu
+  - User
+  - Action (Masuk/Keluar/Update)
+  - Item Details
+  - IP Address
+  - Device;
+  
+  |Manager/Security|
+  :Review Audit Trail;
+  :Verify Compliance;
+  :Check Anomali;
+  
+  if (Ada Anomali?) then (Ya)
+    :Investigate;
+    :Buat Report;
+    :Notifikasi Admin;
+    stop
+  else (Tidak)
+    :Audit OK;
+    :Archive Log;
+    stop
+  endif
+endif
+
+@enduml

@@ -1,0 +1,251 @@
+@startuml Use Case Diagram - Working Permit System
+title Use Case Diagram - Sistem Working Permit Data Center
+
+left to right direction
+
+' ===== ACTORS =====
+actor "Visitor\n(Tamu/Kontraktor)" as Visitor
+actor "PIC\n(Person In Charge)" as PIC
+actor "Manager" as Manager
+actor "Security" as Security
+actor "Admin" as Admin
+
+' ===== SYSTEM BOUNDARY =====
+rectangle "Working Permit System" {
+  
+  ' === AUTHENTICATION ===
+  package "Autentikasi" {
+    usecase "UC-01\nLogin" as UC01
+    usecase "UC-02\nRegister" as UC02
+    usecase "UC-03\nLogout" as UC03
+  }
+  
+  ' === VISITOR FEATURES ===
+  package "Manajemen Permit (Visitor)" {
+    usecase "UC-04\nBuat Permohonan\nIzin Kerja" as UC04
+    usecase "UC-05\nLihat Status Permit" as UC05
+    usecase "UC-06\nEdit Permit\n(Pending)" as UC06
+    usecase "UC-07\nBatalkan Permit" as UC07
+    usecase "UC-08\nDownload PDF\nPermit" as UC08
+    usecase "UC-09\nLihat Riwayat\nKunjungan" as UC09
+    usecase "UC-10\nLihat QR Code\n& OTP" as UC10
+  }
+  
+  ' === PIC FEATURES ===
+  package "Review & Monitoring (PIC)" {
+    usecase "UC-11\nReview Permohonan\nPermit" as UC11
+    usecase "UC-12\nApprove/Reject\nPermit (PIC)" as UC12
+    usecase "UC-13\nLihat Jadwal\nKunjungan" as UC13
+    usecase "UC-14\nMonitor Visitor\ndi Lokasi" as UC14
+    usecase "UC-15\nGenerate Laporan\nPIC" as UC15
+  }
+  
+  ' === MANAGER FEATURES ===
+  package "Approval & Management (Manager)" {
+    usecase "UC-16\nFinal Approval\nPermit" as UC16
+    usecase "UC-17\nReject Permit\n(Manager)" as UC17
+    usecase "UC-18\nMonitor Real-Time" as UC18
+    usecase "UC-19\nKelola User" as UC19
+    usecase "UC-20\nLihat Analytics\n& Dashboard" as UC20
+    usecase "UC-21\nKonfigurasi Sistem" as UC21
+    usecase "UC-22\nAudit Trail" as UC22
+    usecase "UC-23\nReview Incident\nReport" as UC23
+  }
+  
+  ' === SECURITY FEATURES ===
+  package "Access Control (Security)" {
+    usecase "UC-24\nCheck-In Visitor" as UC24
+    usecase "UC-25\nVerifikasi QR Code\n& OTP" as UC25
+    usecase "UC-26\nCatat Barang\nMasuk" as UC26
+    usecase "UC-27\nGenerate Label\nBarang" as UC27
+    usecase "UC-28\nTerbitkan ID Card\nTemporary" as UC28
+    usecase "UC-29\nCheck-Out Visitor" as UC29
+    usecase "UC-30\nVerifikasi Barang\nKeluar" as UC30
+    usecase "UC-31\nLihat Visitor Aktif" as UC31
+    usecase "UC-32\nLihat Access Log" as UC32
+    usecase "UC-33\nBuat Incident\nReport" as UC33
+    usecase "UC-34\nLost & Found" as UC34
+    usecase "UC-35\nEmergency Protocol" as UC35
+  }
+  
+  ' === MUTASI BARANG FEATURES ===
+  package "Tracking Barang & Peralatan" {
+    usecase "UC-48\nLihat Status Barang\nSaya (Visitor)" as UC48
+    usecase "UC-49\nDownload Laporan\nBarang (Visitor)" as UC49
+    usecase "UC-50\nMonitoring Barang\nVisitor (PIC)" as UC50
+    usecase "UC-51\nKirim Reminder\nCheck-Out (PIC)" as UC51
+    usecase "UC-52\nLaporan Mutasi\nBarang (PIC)" as UC52
+    usecase "UC-53\nReview Incident\nBarang (Manager)" as UC53
+    usecase "UC-54\nInvestigasi Barang\nHilang (Manager)" as UC54
+    usecase "UC-55\nResolve Incident\n& Kompensasi (Manager)" as UC55
+    usecase "UC-56\nAnalytics Incident\nBarang (Manager)" as UC56
+  }
+  
+  ' === ADMIN FEATURES ===
+  package "System Administration (Admin)" {
+    usecase "UC-36\nUser Management\n(CRUD)" as UC36
+    usecase "UC-37\nSystem Configuration" as UC37
+    usecase "UC-38\nDatabase Management" as UC38
+    usecase "UC-39\nSystem Logs &\nMonitoring" as UC39
+    usecase "UC-40\nBackup & Restore" as UC40
+    usecase "UC-41\nMaintenance Mode" as UC41
+  }
+  
+  ' === SYSTEM FEATURES ===
+  package "Sistem & Notifikasi" {
+    usecase "UC-42\nKirim Notifikasi\nEmail" as UC42
+    usecase "UC-43\nKirim Notifikasi\nSMS" as UC43
+    usecase "UC-44\nNotifikasi In-App" as UC44
+    usecase "UC-45\nGenerate QR Code" as UC45
+    usecase "UC-46\nGenerate OTP" as UC46
+    usecase "UC-47\nGenerate PDF\nPermit" as UC47
+  }
+}
+
+' ===== EXTERNAL SYSTEMS =====
+actor "Email Server\n(SMTP)" as EmailServer
+actor "SMS Gateway\n(Twilio)" as SMSGateway
+
+' ===== RELATIONSHIPS =====
+
+' --- VISITOR ---
+Visitor --> UC01
+Visitor --> UC02
+Visitor --> UC03
+Visitor --> UC04
+Visitor --> UC05
+Visitor --> UC06
+Visitor --> UC07
+Visitor --> UC08
+Visitor --> UC09
+Visitor --> UC10
+Visitor --> UC48
+Visitor --> UC49
+
+' --- PIC ---
+PIC --> UC01
+PIC --> UC03
+PIC --> UC11
+PIC --> UC12
+PIC --> UC13
+PIC --> UC50
+PIC --> UC51
+PIC --> UC52
+PIC --> UC14
+PIC --> UC15
+
+' --- MANAGER ---
+Manager --> UC01
+Manager --> UC03
+Manager --> UC16
+Manager --> UC17
+Manager --> UC18
+Manager --> UC19
+Manager --> UC20
+Manager --> UC53
+Manager --> UC54
+Manager --> UC55
+Manager --> UC56
+Manager --> UC21
+Manager --> UC22
+Manager --> UC23
+
+' --- SECURITY ---
+Security --> UC01
+Security --> UC03
+Security --> UC24
+Security --> UC25
+Security --> UC26
+Security --> UC27
+Security --> UC28
+Security --> UC29
+Security --> UC30
+Security --> UC31
+Security --> UC32
+Security --> UC33
+Security --> UC34
+Security --> UC35
+
+' --- ADMIN ---
+Admin --> UC01
+Admin --> UC03
+Admin --> UC36
+Admin --> UC37
+Admin --> UC38
+Admin --> UC39
+Admin --> UC40
+Admin --> UC41
+Admin --> UC19
+
+' === INCLUDE & EXTEND ===
+UC04 ..> UC45 : <<include>>
+UC04 ..> UC42 : <<include>>
+
+UC12 ..> UC42 : <<include>>
+UC12 ..> UC44 : <<include>>
+
+UC16 ..> UC45 : <<include>>
+UC16 ..> UC46 : <<include>>
+UC16 ..> UC47 : <<include>>
+UC16 ..> UC42 : <<include>>
+UC16 ..> UC43 : <<include>>
+
+UC24 ..> UC25 : <<include>>
+
+UC26 ..> UC27 : <<include>>
+UC30 ..> UC33 : <<extend>>
+
+UC48 ..> UC49 : <<extend>>
+UC50 ..> UC51 : <<extend>>
+UC50 ..> UC52 : <<extend>>
+
+UC53 ..> UC54 : <<extend>>
+UC53 ..> UC55 : <<include>>
+UC55 ..> UC56 : <<extend>>
+UC24 ..> UC26 : <<extend>>
+UC24 ..> UC28 : <<include>>
+
+UC29 ..> UC30 : <<include>>
+UC30 ..> UC33 : <<extend>>
+
+UC08 ..> UC47 : <<include>>
+
+' === EXTERNAL SYSTEMS ===
+UC42 --> EmailServer : <<use>>
+UC43 --> SMSGateway : <<use>>
+
+note right of Visitor
+  Role: VISITOR
+  - Pengunjung dari luar
+  - Kontraktor/Vendor
+end note
+
+note right of PIC
+  Role: PIC
+  - Person In Charge
+  - Review permohonan
+  - Monitor kunjungan
+end note
+
+note right of Manager
+  Role: MANAGER
+  - Final approval
+  - Management & oversight
+  - Analytics
+end note
+
+note right of Security
+  Role: SECURITY
+  - Access control
+  - Check-in/out
+  - Tracking barang
+end note
+
+note right of Admin
+  Role: ADMIN
+  - System administration
+  - User management
+  - Maintenance
+end note
+
+@enduml

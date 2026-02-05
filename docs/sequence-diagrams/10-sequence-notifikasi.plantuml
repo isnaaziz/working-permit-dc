@@ -1,0 +1,162 @@
+@startuml Sequence - Notifikasi
+title Sequence Diagram - Sistem Notifikasi
+
+participant "Event Source\n(Service)" as Source
+participant "NotificationService" as NotifService
+participant "EmailService" as EmailService
+participant "SMSService" as SMSService
+participant "NotificationRepository" as NotifRepo
+participant "WebSocketHandler" as WebSocket
+database "Database" as DB
+actor "Email Server\n(SMTP)" as SMTP
+actor "SMS Gateway\n(Twilio)" as Twilio
+actor "User" as User
+
+note over Source
+  Event triggers:
+  - Permit Created
+  - Permit Reviewed
+  - Permit Approved/Rejected
+  - Check-In Success
+  - Check-Out Success
+  - OTP Generated
+  - Incident Created
+end note
+
+Source -> NotifService: sendNotification(event, recipientIds, data)
+activate NotifService
+
+NotifService -> NotifService: Identify event type
+NotifService -> NotifService: Load notification template
+NotifService -> NotifService: Build notification content
+
+' Get recipient details
+loop For each recipient
+    NotifService -> DB: SELECT * FROM users\nWHERE id IN (recipientIds)
+    activate DB
+    DB --> NotifService: User list with:\n- Email\n- Phone\n- Preferences
+    deactivate DB
+end
+
+' === PARALLEL PROCESSING ===
+par Send Email
+    NotifService -> EmailService: sendEmail(recipients, subject, body, attachments)
+    activate EmailService
+    
+    EmailService -> EmailService: Build HTML email:\n- Template rendering\n- Add attachments (PDF, QR)\n- Inline images
+    
+    EmailService -> SMTP: Send via SMTP
+    activate SMTP
+    
+    alt Email sent successfully
+        SMTP --> EmailService: 250 OK
+        deactivate SMTP
+        
+        EmailService -> DB: INSERT INTO email_logs\n(recipient, subject, status: SENT)
+        EmailService --> NotifService: Email sent ✓
+        
+    else Send failed
+        SMTP --> EmailService: 5xx Error
+        EmailService -> DB: INSERT INTO email_logs\n(status: FAILED, error)
+        
+        EmailService -> EmailService: Retry (max 3x)
+        
+        alt Retry success
+            EmailService --> NotifService: Sent after retry
+        else Retry failed
+            EmailService --> NotifService: Failed after retries
+        end
+    end
+    deactivate EmailService
+
+and Send SMS
+    alt User has phone & SMS enabled
+        NotifService -> SMSService: sendSMS(phone, message)
+        activate SMSService
+        
+        SMSService -> SMSService: Format SMS message:\n- Max 160 chars\n- Important info only
+        
+        SMSService -> Twilio: POST /Messages
+        activate Twilio
+        
+        alt SMS sent
+            Twilio --> SMSService: 201 Created\n{messageSid}
+            deactivate Twilio
+            
+            SMSService -> DB: INSERT INTO sms_logs\n(phone, message, status: SENT)
+            SMSService --> NotifService: SMS sent ✓
+            
+        else Send failed
+            Twilio --> SMSService: 4xx/5xx Error
+            SMSService -> DB: INSERT INTO sms_logs\n(status: FAILED)
+            
+            SMSService -> SMSService: Retry (max 3x)
+            SMSService --> NotifService: Failed
+        end
+        deactivate SMSService
+    end
+
+and Save In-App Notification
+    NotifService -> NotifRepo: save(notification)
+    activate NotifRepo
+    
+    NotifRepo -> DB: INSERT INTO notifications\n(user_id, type, title,\nmessage, link, priority,\nread: false, created_at)
+    activate DB
+    DB --> NotifRepo: Notification ID
+    deactivate DB
+    
+    NotifRepo --> NotifService: Notification saved
+    deactivate NotifRepo
+    
+    ' Check if user online
+    NotifService -> WebSocket: isUserOnline(userId)
+    activate WebSocket
+    
+    alt User is online
+        WebSocket --> NotifService: Online: true
+        
+        NotifService -> WebSocket: pushRealTimeNotification(userId, notification)
+        WebSocket -> WebSocket: Get user's WebSocket connection
+        WebSocket -> User: Push notification (JSON)
+        activate User
+        User -> User: Display toast/badge
+        User -> User: Update notification counter
+        deactivate User
+        
+        WebSocket --> NotifService: Pushed ✓
+        
+    else User is offline
+        WebSocket --> NotifService: Online: false
+        NotifService -> NotifService: Store for later\n(already in DB)
+    end
+    deactivate WebSocket
+end
+
+' === LOG NOTIFICATION ===
+NotifService -> DB: INSERT INTO notification_audit\n(event_type, recipients_count,\nemail_sent, sms_sent, timestamp)
+
+NotifService --> Source: NotificationResult\n{emailSent, smsSent, inAppSaved}
+deactivate NotifService
+
+' === USER INTERACTION ===
+alt User opens app
+    User -> User: Login to app
+    User -> NotifRepo: GET /api/notifications\n?userId={id}&unread=true
+    activate NotifRepo
+    
+    NotifRepo -> DB: SELECT * FROM notifications\nWHERE user_id = ?\nAND read = false\nORDER BY created_at DESC
+    DB --> NotifRepo: Unread notifications
+    NotifRepo --> User: Notification list
+    deactivate NotifRepo
+    
+    User -> User: Display notification badge:\n"[X] unread"
+    
+    User -> User: Click notification
+    User -> NotifRepo: PUT /api/notifications/{id}/read
+    NotifRepo -> DB: UPDATE notifications\nSET read = true,\nread_at = NOW()
+    NotifRepo --> User: Marked as read
+    
+    User -> User: Navigate to related page
+end
+
+@enduml

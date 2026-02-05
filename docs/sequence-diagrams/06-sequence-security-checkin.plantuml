@@ -1,0 +1,165 @@
+@startuml Sequence - Check-In
+title Sequence Diagram - Security Check-In Visitor
+
+actor "Visitor" as Visitor
+actor "Security" as Security
+participant "UI\nSecurity Dashboard" as UI
+participant "AccessController" as AccessCtrl
+participant "AccessService" as AccessService
+participant "PermitRepository" as PermitRepo
+participant "OTPService" as OTPService
+participant "TempIdCardService" as IDCardService
+participant "AccessLogRepository" as AccessLogRepo
+participant "NotificationService" as NotifService
+database "Database" as DB
+
+Visitor -> Security: Datang ke Data Center\nTunjukkan email permit
+activate Security
+
+Security -> UI: Login & buka "Check-In"
+activate UI
+
+Security -> UI: Scan QR Code
+UI -> UI: Decode QR Code data
+
+UI -> AccessCtrl: POST /api/access/validate-qr\n{qrCodeData}
+activate AccessCtrl
+
+AccessCtrl -> AccessService: validateQRCode(qrData)
+activate AccessService
+
+AccessService -> AccessService: Decode & parse QR data:\n{permitId, visitorId}
+
+AccessService -> PermitRepo: findById(permitId)
+activate PermitRepo
+PermitRepo -> DB: SELECT * FROM working_permits\nWHERE id = ?
+activate DB
+DB --> PermitRepo: Permit data
+deactivate DB
+PermitRepo --> AccessService: Permit entity
+deactivate PermitRepo
+
+' Validasi status permit
+AccessService -> AccessService: Validate:\n- status = APPROVED?\n- validFrom <= today?\n- validUntil >= today?
+
+alt QR Code tidak valid / Permit tidak APPROVED
+    AccessService --> AccessCtrl: throw InvalidQRCodeException
+    AccessCtrl --> UI: 400 Bad Request\n"QR Code tidak valid"
+    UI --> Security: Tampilkan error
+    Security --> Visitor: "QR Code tidak valid"
+    stop
+else QR Valid & Permit APPROVED
+    AccessService --> AccessCtrl: QRValidationResponse\n{valid: true, permitData}
+    deactivate AccessService
+    AccessCtrl --> UI: 200 OK {permitData}
+    deactivate AccessCtrl
+    
+    UI --> Security: Tampilkan data visitor:\n- Nama\n- Perusahaan\n- Tujuan\n- Jadwal
+    
+    Security -> Visitor: "Silakan input OTP Code"
+    Visitor -> Security: Berikan OTP\n(dari email/SMS)
+    
+    Security -> UI: Input OTP code
+    
+    UI -> AccessCtrl: POST /api/access/verify-otp\n{permitId, otpCode}
+    activate AccessCtrl
+    
+    AccessCtrl -> OTPService: verifyOTP(permitId, code)
+    activate OTPService
+    
+    OTPService -> DB: SELECT * FROM otps\nWHERE permit_id = ? AND code = ?
+    activate DB
+    DB --> OTPService: OTP record
+    deactivate DB
+    
+    OTPService -> OTPService: Check:\n- OTP match?\n- Not expired?
+    
+    alt OTP salah atau expired
+        OTPService --> AccessCtrl: throw InvalidOTPException
+        AccessCtrl --> UI: 400 Bad Request\n"OTP salah/expired"
+        UI --> Security: Tampilkan error
+        Security --> Visitor: "OTP salah, coba lagi"
+        stop
+    else OTP valid
+        OTPService -> DB: UPDATE otps\nSET used = true
+        OTPService --> AccessCtrl: OTPVerified
+        deactivate OTPService
+        AccessCtrl --> UI: 200 OK {otpValid: true}
+        deactivate AccessCtrl
+        
+        UI --> Security: "OTP Valid ✓"
+        
+        Security -> Security: Verifikasi identitas visitor:\n- Nama cocok?\n- Perusahaan cocok?
+        
+        Security -> UI: Klik "Confirm Check-In"
+        
+        UI -> AccessCtrl: POST /api/access/checkin\n{permitId}
+        activate AccessCtrl
+        
+        AccessCtrl -> AccessService: processCheckIn(permitId)
+        activate AccessService
+        
+        ' Update permit status
+        AccessService -> PermitRepo: findById(permitId)
+        PermitRepo -> DB: SELECT * FROM working_permits WHERE id = ?
+        DB --> PermitRepo: Permit
+        PermitRepo --> AccessService: Permit
+        
+        AccessService -> AccessService: permit.setStatus(CHECKED_IN)
+        AccessService -> AccessService: permit.setCheckInTime(now)
+        
+        AccessService -> PermitRepo: save(permit)
+        PermitRepo -> DB: UPDATE working_permits\nSET status = 'CHECKED_IN',\ncheck_in_time = NOW()
+        
+        ' Generate Temporary ID Card
+        AccessService -> IDCardService: generateTempIdCard(permit)
+        activate IDCardService
+        
+        IDCardService -> IDCardService: Create ID Card:\n- Nama & Foto\n- Nomor Permit\n- QR Code\n- Generate RFID Tag
+        
+        IDCardService -> DB: INSERT INTO temp_id_cards\n(permit_id, rfid_tag, issued_at)
+        activate DB
+        DB --> IDCardService: ID Card created
+        deactivate DB
+        
+        IDCardService --> AccessService: TempIdCard entity
+        deactivate IDCardService
+        
+        ' Catat access log
+        AccessService -> AccessLogRepo: save(accessLog)
+        activate AccessLogRepo
+        AccessLogRepo -> DB: INSERT INTO access_logs\n(permit_id, action: CHECK_IN,\ntimestamp, by_user_id)
+        AccessLogRepo --> AccessService: Log saved
+        deactivate AccessLogRepo
+        
+        ' Kirim notifikasi
+        AccessService -> NotifService: notifyCheckIn(permit)
+        activate NotifService
+        
+        NotifService -> NotifService: sendEmail(visitor,\n"Check-in berhasil")
+        NotifService -> NotifService: sendEmail(pic,\n"Visitor sudah tiba")
+        NotifService -> DB: INSERT INTO notifications
+        
+        NotifService --> AccessService: Notifications sent
+        deactivate NotifService
+        
+        AccessService --> AccessCtrl: CheckInResponse\n{success, idCardData}
+        deactivate AccessService
+        
+        AccessCtrl --> UI: 200 OK {idCard, rfidTag}
+        deactivate AccessCtrl
+        
+        UI --> Security: Tampilkan sukses:\n"Check-In Berhasil!\nCetak ID Card"
+        
+        Security -> Security: Cetak ID Card Temporary
+        Security -> Visitor: Serahkan ID Card\nJelaskan prosedur akses
+        
+        UI --> Security: "Visitor checked-in\nRFID: [tag]"
+        deactivate UI
+        
+        Security --> Visitor: "Selamat datang!\nGunakan ID Card untuk akses area"
+        deactivate Security
+    end
+end
+
+@enduml

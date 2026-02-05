@@ -1,0 +1,94 @@
+@startuml Sequence - Register
+title Sequence Diagram - Register Visitor
+
+actor "Visitor" as Visitor
+participant "UI\nRegister Page" as UI
+participant "AuthController" as AuthCtrl
+participant "UserService" as UserService
+participant "UserRepository" as UserRepo
+participant "EmailService" as EmailService
+database "Database" as DB
+
+Visitor -> UI: Buka halaman register
+activate UI
+UI --> Visitor: Tampilkan form registrasi
+
+Visitor -> UI: Isi form:\n- Nama\n- Email\n- Telepon\n- Username\n- Password
+UI -> UI: Validasi client-side
+
+Visitor -> UI: Submit form
+
+UI -> AuthCtrl: POST /api/auth/register\n{userData}
+activate AuthCtrl
+
+AuthCtrl -> AuthCtrl: Validasi request:\n- Required fields\n- Email format\n- Password strength
+
+AuthCtrl -> UserService: registerUser(registrationRequest)
+activate UserService
+
+' Cek email duplikat
+UserService -> UserRepo: existsByEmail(email)
+activate UserRepo
+UserRepo -> DB: SELECT COUNT(*) FROM users\nWHERE email = ?
+activate DB
+DB --> UserRepo: count
+deactivate DB
+UserRepo --> UserService: boolean
+deactivate UserRepo
+
+alt Email sudah terdaftar
+    UserService --> AuthCtrl: throw EmailAlreadyExistsException
+    AuthCtrl --> UI: 400 Bad Request\n"Email sudah terdaftar"
+    UI --> Visitor: Tampilkan error
+else Email belum terdaftar
+    
+    ' Cek username duplikat
+    UserService -> UserRepo: existsByUsername(username)
+    UserRepo -> DB: SELECT COUNT(*) FROM users\nWHERE username = ?
+    DB --> UserRepo: count
+    UserRepo --> UserService: boolean
+    
+    alt Username sudah dipakai
+        UserService --> AuthCtrl: throw UsernameAlreadyExistsException
+        AuthCtrl --> UI: 400 Bad Request\n"Username sudah dipakai"
+        UI --> Visitor: Tampilkan error
+    else Username tersedia
+        
+        ' Enkripsi password
+        UserService -> UserService: passwordEncoder.encode(password)
+        
+        ' Set role default
+        UserService -> UserService: user.setRole(Role.VISITOR)
+        UserService -> UserService: user.setStatus(Status.ACTIVE)
+        
+        ' Simpan ke database
+        UserService -> UserRepo: save(user)
+        activate UserRepo
+        UserRepo -> DB: INSERT INTO users\n(name, email, phone, username, password, role)
+        DB --> UserRepo: User ID
+        UserRepo --> UserService: User entity
+        deactivate UserRepo
+        
+        ' Kirim email verifikasi
+        UserService -> EmailService: sendWelcomeEmail(user)
+        activate EmailService
+        EmailService -> EmailService: Build email template
+        EmailService --> UserService: Email sent
+        deactivate EmailService
+        
+        UserService --> AuthCtrl: RegistrationResponse\n{userId, username, message}
+        deactivate UserService
+        
+        AuthCtrl --> UI: 201 Created\n{success, message}
+        deactivate AuthCtrl
+        
+        UI --> Visitor: Tampilkan sukses:\n"Registrasi berhasil!\nSilakan login"
+        
+        UI -> UI: Auto redirect ke login\n(3 detik)
+        
+        UI --> Visitor: Redirect ke /login
+        deactivate UI
+    end
+end
+
+@enduml

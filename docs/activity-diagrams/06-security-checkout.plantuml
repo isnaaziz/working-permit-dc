@@ -1,0 +1,90 @@
+@startuml Check-Out Visitor oleh Security
+title Activity Diagram - Check-Out Visitor (Role: SECURITY)
+
+|Visitor|
+start
+:Selesai Bekerja;
+:Kembali ke Pos Security;
+:Kembalikan ID Card Temporary;
+
+|Security|
+:Login ke Sistem;
+:Buka Menu "Check-Out Visitor";
+
+:Scan ID Card / Input Nomor Permit;
+
+|Sistem|
+:Load Data Permit;
+:Cek Status;
+
+if (Status = CHECKED_IN?) then (Ya)
+  |Security|
+  :Verifikasi Visitor:
+  - Periksa Barang Bawaan
+  - Sesuai SOP Keamanan;
+  
+  :Tanya: "Pekerjaan Selesai?";
+  
+  |Visitor|
+  if (Selesai?) then (Ya)
+    |Security|
+    :Klik "Check-Out";
+    
+    |Sistem|
+    :Update Status = CHECKED_OUT;
+    :Catat Access Log (Exit);
+    :Hitung Durasi Kunjungan;
+    :Nonaktifkan ID Card;
+    
+    :Generate Laporan Kunjungan:
+    - Waktu Check-In
+    - Waktu Check-Out
+    - Durasi Total
+    - Lokasi yang Diakses
+    - PIC yang Ditemui;
+    
+    :Kirim Notifikasi ke:
+    - Visitor: "Check-Out Berhasil"
+    - PIC: "Visitor telah keluar"
+    - Manager: Laporan Kunjungan;
+    
+    |Security|
+    :Simpan ID Card\nuntuk Dimusnahkan;
+    :Tampilkan Pesan Sukses;
+    :Ucapkan Terima Kasih;
+    stop
+    
+  else (Belum, Perlu Keluar Sementara)
+    |Security|
+    :Klik "Temporary Exit";
+    
+    |Sistem|
+    :Update Status = TEMPORARY_OUT;
+    :Catat Temporary Log;
+    :Set ID Card = SUSPENDED;
+    
+    :Kirim Notifikasi ke PIC:
+    - "Visitor keluar sementara";
+    
+    |Security|
+    :Simpan ID Card Sementara;
+    :Beri Tanda Keluar Sementara;
+    :Catat Waktu Keluar;
+    
+    note right
+      Visitor bisa kembali
+      dengan prosedur check-in ulang
+      menggunakan ID yang sama
+    end note
+    
+    stop
+  endif
+  
+else (Tidak)
+  |Security|
+  :Tampilkan Error\n"Permit Tidak dalam\nStatus Checked-In";
+  :Tampilkan Status Saat Ini;
+  stop
+endif
+
+@enduml

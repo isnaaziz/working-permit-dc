@@ -1,0 +1,115 @@
+@startuml Sequence - Visitor Lihat Barang
+title Sequence Diagram - Visitor Lihat Status Barang
+
+actor "Visitor" as Visitor
+participant "UI\nVisitor Dashboard" as UI
+participant "MutasiController" as MutasiCtrl
+participant "MutasiRepository" as MutasiRepo
+database "Database" as DB
+
+Visitor -> UI: Login & buka dashboard
+activate UI
+
+Visitor -> UI: Klik menu "Barang Saya"
+
+UI -> MutasiCtrl: GET /api/mutasi/my-items\n?permitId={permitId}
+activate MutasiCtrl
+
+MutasiCtrl -> MutasiCtrl: Extract userId dari JWT token
+
+MutasiCtrl -> MutasiRepo: findByVisitorId(userId)
+activate MutasiRepo
+
+MutasiRepo -> DB: SELECT mb.*, wp.status as permit_status\nFROM mutasi_barang mb\nJOIN working_permits wp ON mb.permit_id = wp.id\nWHERE wp.visitor_id = ?\nORDER BY mb.waktu_masuk DESC
+activate DB
+DB --> MutasiRepo: Mutasi barang list
+deactivate DB
+
+MutasiRepo --> MutasiCtrl: List<MutasiBarang>
+deactivate MutasiRepo
+
+MutasiCtrl -> MutasiCtrl: Group by permitId:\n- Permit aktif (CHECKED_IN)\n- Permit selesai (CHECKED_OUT)\n- Total items per permit
+
+MutasiCtrl --> UI: 200 OK\n{permits[], itemsPerPermit[]}
+deactivate MutasiCtrl
+
+UI --> Visitor: Tampilkan daftar permits\ndengan barang
+
+alt Permit sedang aktif (CHECKED_IN)
+    UI --> Visitor: Tampilkan:\n- Status: "Sedang di Lokasi"\n- Barang: [X] items\n- Badge: "ACTIVE"
+    
+    Visitor -> UI: Klik permit untuk detail
+    
+    UI --> Visitor: Detail barang:\n- Nama barang\n- Serial number\n- Kondisi masuk\n- Waktu masuk\n- Label/QR code\n- Foto barang
+    
+    note right of Visitor
+        Visitor bisa:
+        - Lihat label QR code
+        - Download daftar barang
+        - Cek reminder untuk check-out
+    end note
+    
+else Permit sudah selesai (CHECKED_OUT)
+    UI --> Visitor: Tampilkan:\n- Status: "Selesai"\n- Barang: [X] items\n- Durasi: [Y] jam\n- Badge: "COMPLETED"
+    
+    Visitor -> UI: Klik permit untuk detail
+    
+    UI -> MutasiCtrl: GET /api/mutasi/report/{permitId}
+    activate MutasiCtrl
+    
+    MutasiCtrl -> MutasiRepo: findByPermitIdWithComparison(permitId)
+    MutasiRepo -> DB: SELECT *,\nkondisi_masuk, kondisi_keluar,\nwaktu_masuk, waktu_keluar\nFROM mutasi_barang\nWHERE permit_id = ?
+    DB --> MutasiRepo: Detail lengkap
+    MutasiRepo --> MutasiCtrl: MutasiBarang with comparison
+    
+    MutasiCtrl --> UI: 200 OK {reportData}
+    deactivate MutasiCtrl
+    
+    UI --> Visitor: Tampilkan laporan:\n- Tabel perbandingan\n- Kondisi masuk vs keluar\n- Status: OK/Rusak/Hilang
+    
+    opt Ada barang bermasalah
+        UI --> Visitor: Highlight:\n"⚠️ [X] barang dengan masalah"
+        
+        Visitor -> UI: Klik barang bermasalah
+        
+        UI --> Visitor: Detail incident:\n- Deskripsi masalah\n- Foto kerusakan\n- Status penanganan\n- Berita Acara (jika ada)
+    end
+    
+    Visitor -> UI: Klik "Download Laporan"
+    
+    UI -> MutasiCtrl: GET /api/mutasi/report/{permitId}/pdf
+    activate MutasiCtrl
+    
+    MutasiCtrl -> MutasiCtrl: Generate PDF report:\n- Summary\n- Detail per item\n- Comparison table\n- Photos
+    
+    MutasiCtrl --> UI: PDF file
+    deactivate MutasiCtrl
+    
+    UI --> Visitor: Download PDF
+    Visitor -> Visitor: Simpan laporan
+end
+
+opt Filter & Search
+    Visitor -> UI: Filter barang:\n- Status (Masuk/Keluar/Hilang)\n- Kategori\n- Tanggal\n- Permit
+    
+    UI -> MutasiCtrl: GET /api/mutasi/my-items\n?status={}&kategori={}&dateRange={}
+    MutasiCtrl -> MutasiRepo: findByVisitorIdWithFilters(...)
+    MutasiRepo -> DB: SELECT with WHERE filters
+    DB --> MutasiRepo: Filtered results
+    MutasiRepo --> MutasiCtrl: List
+    MutasiCtrl --> UI: Filtered data
+    UI --> Visitor: Tampilkan hasil filter
+end
+
+note over Visitor, UI
+    Visitor dapat:
+    ✓ Melihat semua barang yang pernah dibawa
+    ✓ Track status barang saat ini
+    ✓ Lihat history lengkap
+    ✓ Download laporan
+    ✓ Cek incident/masalah
+end note
+
+deactivate UI
+
+@enduml

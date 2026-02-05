@@ -1,0 +1,283 @@
+@startuml Admin Dashboard
+title Activity Diagram - Dashboard Admin (Role: ADMIN)
+
+|Admin|
+start
+:Login ke Sistem;
+:Buka Dashboard Admin;
+
+|Sistem|
+:Load Data Admin Dashboard:
+- System Health
+- Database Status
+- Active Users
+- System Logs
+- Performance Metrics;
+
+|Admin|
+:Lihat System Overview;
+
+:Pilih Menu;
+
+if (Menu?) then (User Management)
+  :Lihat All Users:
+  - Visitor
+  - PIC
+  - Security
+  - Manager
+  - Admin;
+  
+  :Pilih Aksi;
+  
+  if (Aksi?) then (CRUD User)
+    :Create/Read/Update/Delete;
+    :Manage Roles & Permissions;
+    :Reset Password;
+    :Activate/Deactivate;
+    stop
+    
+  elseif (Aksi?) then (Bulk Operations)
+    :Import Users (CSV/Excel);
+    :Export Users;
+    :Bulk Update;
+    :Bulk Delete;
+    stop
+    
+  else (User Analytics)
+    :Lihat Statistik:
+    - Active/Inactive
+    - By Role
+    - Login History
+    - Activity Metrics;
+    stop
+  endif
+  
+elseif (Menu?) then (System Configuration)
+  :Akses Semua Settings:
+  - General Settings
+  - Email Configuration
+  - SMS Gateway
+  - QR Code Settings
+  - OTP Settings
+  - Security Policies
+  - Backup Settings
+  - Integration Settings;
+  
+  :Edit Konfigurasi;
+  :Test Configuration;
+  :Apply Changes;
+  
+  |Sistem|
+  :Restart Services jika Perlu;
+  :Log Configuration Change;
+  
+  |Admin|
+  :Verify Changes;
+  stop
+  
+elseif (Menu?) then (Database Management)
+  :Pilih Operasi:
+  - View Tables
+  - Run Queries
+  - Backup Database
+  - Restore Database
+  - Clean Old Data
+  - Optimize Tables
+  - Migration Scripts;
+  
+  :Execute Operation;
+  
+  |Sistem|
+  :Process Request;
+  :Generate Result/Log;
+  
+  |Admin|
+  :Review Result;
+  :Download Log;
+  stop
+  
+elseif (Menu?) then (System Logs)
+  :Pilih Jenis Log:
+  - Application Logs
+  - Error Logs
+  - Access Logs
+  - Security Logs
+  - Audit Logs
+  - Performance Logs;
+  
+  :Set Filter:
+  - Level (INFO/WARN/ERROR)
+  - Date Range
+  - Module
+  - User;
+  
+  |Sistem|
+  :Load & Parse Logs;
+  
+  |Admin|
+  :Analyze Logs;
+  
+  if (Ada Error Critical?) then (Ya)
+    :Investigate Issue;
+    :Create Incident Ticket;
+    :Notifikasi Developer;
+    stop
+  else (Tidak)
+    :Export Logs (opsional);
+    stop
+  endif
+  
+elseif (Menu?) then (Monitoring & Alerts)
+  :Lihat Real-Time Monitoring:
+  - CPU Usage
+  - Memory Usage
+  - Disk Space
+  - Network Traffic
+  - Database Connections
+  - API Response Time
+  - Active Sessions;
+  
+  :Set Alert Rules:
+  - Threshold Values
+  - Alert Recipients
+  - Alert Channels;
+  
+  if (Ada Alert Triggered?) then (Ya)
+    :View Alert Details;
+    :Take Action:
+    - Restart Service
+    - Clear Cache
+    - Scale Resources
+    - Contact Support;
+    stop
+  else (Tidak)
+    :Monitor Normal;
+    stop
+  endif
+  
+elseif (Menu?) then (Backup & Restore)
+  :Pilih Operasi;
+  
+  if (Operasi?) then (Backup)
+    :Pilih Backup Type:
+    - Full Backup
+    - Incremental
+    - Database Only
+    - Files Only;
+    
+    :Set Backup Location;
+    :Start Backup;
+    
+    |Sistem|
+    :Create Backup:
+    - Database Dump
+    - File Archive
+    - Configuration Files;
+    
+    :Verify Backup Integrity;
+    :Save Metadata;
+    
+    |Admin|
+    :Download Backup (opsional);
+    :Verify Success;
+    stop
+    
+  else (Restore)
+    :Pilih Backup File;
+    :Preview Restore Info:
+    - Backup Date
+    - Size
+    - Content;
+    
+    :Confirm Restore;
+    
+    if (Yakin Restore?) then (Ya)
+      |Sistem|
+      :Stop Application;
+      :Restore Database;
+      :Restore Files;
+      :Verify Integrity;
+      :Restart Application;
+      
+      |Admin|
+      :Test System;
+      :Verify Data;
+      stop
+    else (Tidak)
+      :Cancel;
+      stop
+    endif
+  endif
+  
+elseif (Menu?) then (Reports & Analytics)
+  :Pilih Report Type:
+  - System Usage Report
+  - User Activity Report
+  - Performance Report
+  - Security Report
+  - Error Report
+  - Custom Report;
+  
+  :Set Parameters:
+  - Date Range
+  - Filters
+  - Grouping
+  - Metrics;
+  
+  |Sistem|
+  :Generate Report:
+  - Query Data
+  - Calculate Metrics
+  - Create Visualizations;
+  
+  |Admin|
+  :Review Report;
+  :Export (PDF/Excel/CSV);
+  :Schedule Report (opsional);
+  stop
+  
+else (Maintenance Mode)
+  :Pilih Aksi;
+  
+  if (Aksi?) then (Enable Maintenance)
+    :Set Maintenance Message;
+    :Set Estimated Duration;
+    :Notify All Users;
+    
+    |Sistem|
+    :Enter Maintenance Mode;
+    :Block New Logins;
+    :Show Maintenance Page;
+    
+    |Admin|
+    :Perform Maintenance;
+    stop
+    
+  elseif (Aksi?) then (Disable Maintenance)
+    |Sistem|
+    :Exit Maintenance Mode;
+    :Enable Logins;
+    :Restore Normal Operations;
+    
+    :Notify Users System Online;
+    
+    |Admin|
+    :Verify System Working;
+    stop
+    
+  else (Scheduled Maintenance)
+    :Set Schedule:
+    - Date & Time
+    - Duration
+    - Recurrence;
+    
+    :Set Notification:
+    - Advance Notice
+    - Recipients;
+    
+    :Save Schedule;
+    stop
+  endif
+endif
+
+@enduml

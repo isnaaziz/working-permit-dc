@@ -1,0 +1,126 @@
+@startuml Visitor Lihat Status Mutasi
+title Activity Diagram - Visitor Kelola Mutasi Barang
+
+|Visitor|
+start
+:Login ke Sistem;
+:Buka Dashboard Visitor;
+:Pilih Menu "Mutasi Barang Saya";
+
+|Sistem|
+:Load Daftar Mutasi:
+- Pending PIC Review
+- PIC Approved
+- Manager Approved
+- Rejected
+- Completed;
+
+|Visitor|
+:Lihat Daftar Mutasi;
+
+:Pilih Aksi;
+
+if (Aksi?) then (Lihat Detail)
+  :Pilih Mutasi;
+  :Lihat Detail Lengkap:
+  - Status Saat Ini
+  - Timeline Approval
+  - Catatan PIC/Manager
+  - Surat Izin (jika Approved)
+  - QR Code Mutasi (jika Approved);
+  
+  if (Status = APPROVED?) then (Ya)
+    :Tombol "Download Surat Izin";
+    :Tombol "Lihat QR Code";
+    :Tombol "Print";
+  endif
+  
+  stop
+  
+elseif (Aksi?) then (Edit Mutasi)
+  if (Status = PENDING_PIC_REVIEW?) then (Ya)
+    :Buka Form Edit;
+    :Ubah Data Mutasi;
+    :Klik "Simpan";
+    
+    |Sistem|
+    :Update Data Mutasi;
+    :Kirim Notifikasi Update ke PIC;
+    
+    |Visitor|
+    :Tampilkan Pesan Sukses;
+    stop
+  else (Tidak)
+    :Tampilkan Error\n"Hanya Mutasi PENDING\nyang Bisa Diedit";
+    stop
+  endif
+  
+elseif (Aksi?) then (Batalkan Mutasi)
+  if (Status = PENDING atau PIC_APPROVED?) then (Ya)
+    :Klik "Batalkan Mutasi";
+    :Konfirmasi Pembatalan;
+    
+    if (Yakin Batalkan?) then (Ya)
+      |Sistem|
+      :Update Status = CANCELLED;
+      :Kirim Notifikasi ke:
+      - PIC
+      - Manager (jika sudah PIC_APPROVED);
+      
+      |Visitor|
+      :Tampilkan Pesan Sukses;
+      stop
+    else (Tidak)
+      :Kembali ke Daftar;
+      stop
+    endif
+  else (Tidak)
+    :Tampilkan Error\n"Mutasi Tidak Bisa Dibatalkan";
+    stop
+  endif
+  
+elseif (Aksi?) then (Download Surat Izin)
+  if (Status = APPROVED?) then (Ya)
+    |Sistem|
+    :Load PDF Surat Izin;
+    :Download File PDF;
+    
+    |Visitor|
+    :Simpan PDF;
+    stop
+  else (Tidak)
+    :Tampilkan Error\n"Surat Izin Hanya Tersedia\nuntuk Mutasi APPROVED";
+    stop
+  endif
+  
+elseif (Aksi?) then (Print QR Code)
+  if (Status = APPROVED?) then (Ya)
+    |Sistem|
+    :Generate QR Code Image;
+    
+    |Visitor|
+    :Print QR Code;
+    
+    note right
+      QR Code untuk ditunjukkan
+      ke Security saat membawa
+      barang keluar
+    end note
+    
+    stop
+  else (Tidak)
+    :Tampilkan Error;
+    stop
+  endif
+  
+else (Lihat Riwayat)
+  :Lihat Riwayat Mutasi Completed:
+  - Tanggal Keluar
+  - Barang yang Dibawa
+  - Manager yang Approve
+  - Security yang Handle
+  - Status Akhir;
+  stop
+endif
+
+@enduml

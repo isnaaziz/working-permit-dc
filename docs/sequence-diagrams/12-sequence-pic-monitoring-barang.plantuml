@@ -1,0 +1,182 @@
+@startuml Sequence - PIC Monitoring Barang
+title Sequence Diagram - PIC Monitoring Barang Visitor
+
+actor "PIC" as PIC
+participant "UI\nPIC Dashboard" as UI
+participant "MutasiController" as MutasiCtrl
+participant "MutasiRepository" as MutasiRepo
+participant "PermitRepository" as PermitRepo
+participant "NotificationService" as NotifService
+database "Database" as DB
+
+PIC -> UI: Login & buka dashboard
+activate UI
+
+PIC -> UI: Klik menu "Monitoring Barang"
+
+UI -> MutasiCtrl: GET /api/mutasi/monitoring\n?picId={picId}
+activate MutasiCtrl
+
+MutasiCtrl -> MutasiCtrl: Extract userId dari JWT token
+
+' Load permits yang di-handle PIC ini
+MutasiCtrl -> PermitRepo: findByPicId(picId)
+activate PermitRepo
+PermitRepo -> DB: SELECT * FROM working_permits\nWHERE pic_id = ?\nAND status IN ('CHECKED_IN', 'CHECKED_OUT')
+activate DB
+DB --> PermitRepo: Permit list
+deactivate DB
+PermitRepo --> MutasiCtrl: List<Permit>
+deactivate PermitRepo
+
+' Load barang untuk permits tersebut
+MutasiCtrl -> MutasiRepo: findByPermitIds(permitIds)
+activate MutasiRepo
+MutasiRepo -> DB: SELECT mb.*, wp.visitor_name, wp.company\nFROM mutasi_barang mb\nJOIN working_permits wp ON mb.permit_id = wp.id\nWHERE mb.permit_id IN (?)\nORDER BY mb.waktu_masuk DESC
+DB --> MutasiRepo: Mutasi list
+MutasiRepo --> MutasiCtrl: List<MutasiBarang>
+deactivate MutasiRepo
+
+MutasiCtrl -> MutasiCtrl: Aggregate data:\n- Total visitors\n- Total items\n- Items di lokasi\n- Items keluar\n- Items dengan masalah
+
+MutasiCtrl --> UI: 200 OK\n{summary, permits[], items[]}
+deactivate MutasiCtrl
+
+UI --> PIC: Tampilkan dashboard:\n📊 Summary cards:\n- [X] Visitor aktif\n- [Y] Barang di lokasi\n- [Z] Total items hari ini
+
+PIC -> PIC: Pilih view
+
+alt View: Barang di Lokasi
+    UI --> PIC: Daftar barang sedang di lokasi:\n- Nama visitor\n- Nama barang\n- Kategori\n- Waktu masuk\n- Durasi\n- Status
+    
+    PIC -> UI: Pilih visitor
+    
+    UI -> MutasiCtrl: GET /api/mutasi/visitor-items/{visitorId}
+    activate MutasiCtrl
+    MutasiCtrl -> MutasiRepo: findByVisitorIdAndStatus(visitorId, MASUK)
+    MutasiRepo -> DB: SELECT * FROM mutasi_barang mb\nWHERE visitor_id = ? AND status = 'MASUK'
+    DB --> MutasiRepo: Items
+    MutasiRepo --> MutasiCtrl: List
+    MutasiCtrl --> UI: 200 OK {items[]}
+    deactivate MutasiCtrl
+    
+    UI --> PIC: Detail barang visitor:\n- [X] items\n- Kategori breakdown\n- Foto barang\n- Label/QR codes
+    
+    opt Durasi > 12 jam
+        UI --> PIC: ⚠️ Alert:\n"Visitor sudah [X] jam di lokasi"
+        
+        PIC -> UI: Klik "Kirim Reminder"
+        
+        UI -> NotifService: sendReminder(visitorId, duration)
+        activate NotifService
+        NotifService -> NotifService: Build reminder:\n"Sudah [X] jam di lokasi\nJangan lupa check-out"
+        NotifService -> NotifService: sendEmail(visitor)
+        NotifService -> DB: INSERT INTO notifications
+        NotifService --> UI: Reminder sent
+        deactivate NotifService
+        
+        UI --> PIC: "Reminder terkirim ✓"
+    end
+    
+elseif View: History & Laporan
+    UI --> PIC: Form filter:\n- Tanggal\n- Visitor\n- Status\n- Kategori barang
+    
+    PIC -> UI: Set filter & submit
+    
+    UI -> MutasiCtrl: GET /api/mutasi/history\n?picId={}&filters={}
+    activate MutasiCtrl
+    
+    MutasiCtrl -> MutasiRepo: findHistoryByPicId(picId, filters)
+    MutasiRepo -> DB: SELECT * FROM mutasi_barang mb\nJOIN working_permits wp\nWHERE wp.pic_id = ?\nAND [filter conditions]
+    DB --> MutasiRepo: History data
+    MutasiRepo --> MutasiCtrl: List
+    
+    MutasiCtrl -> MutasiCtrl: Calculate statistics:\n- Total items processed\n- OK vs Problems ratio\n- Kategori terbanyak\n- Incident rate
+    
+    MutasiCtrl --> UI: 200 OK {history[], stats}
+    deactivate MutasiCtrl
+    
+    UI --> PIC: Tampilkan:\n- Tabel history\n- Grafik statistik\n- Summary cards
+    
+    PIC -> UI: Klik "Export Laporan"
+    
+    UI -> MutasiCtrl: GET /api/mutasi/report/pic\n?picId={}&format=pdf
+    activate MutasiCtrl
+    
+    MutasiCtrl -> MutasiCtrl: Generate PDF:\n- Summary\n- Detailed table\n- Charts\n- Incident list
+    
+    MutasiCtrl --> UI: PDF file
+    deactivate MutasiCtrl
+    
+    UI --> PIC: Download PDF
+    PIC -> PIC: Simpan laporan
+    
+elseif View: Incident & Masalah
+    UI -> MutasiCtrl: GET /api/mutasi/incidents\n?picId={}
+    activate MutasiCtrl
+    
+    MutasiCtrl -> MutasiRepo: findIncidentsByPicId(picId)
+    MutasiRepo -> DB: SELECT mb.*, i.*\nFROM mutasi_barang mb\nJOIN incidents i ON mb.permit_id = i.permit_id\nWHERE mb.status IN ('KELUAR_RUSAK', 'HILANG')
+    DB --> MutasiRepo: Incidents
+    MutasiRepo --> MutasiCtrl: List
+    MutasiCtrl --> UI: 200 OK {incidents[]}
+    deactivate MutasiCtrl
+    
+    UI --> PIC: Daftar incident:\n- Visitor\n- Barang\n- Tipe masalah\n- Status penanganan\n- Severity
+    
+    PIC -> UI: Pilih incident
+    
+    UI --> PIC: Detail incident:\n- Timeline\n- Deskripsi lengkap\n- Foto evidence\n- Berita Acara\n- Status follow-up
+    
+    alt Status = Open/Pending
+        PIC -> UI: Klik "Update Status"
+        UI --> PIC: Modal:\n"Update status penanganan"
+        
+        PIC -> UI: Input:\n- Status baru\n- Catatan\n- Action taken
+        
+        UI -> MutasiCtrl: PUT /api/mutasi/incidents/{id}\n{status, notes}
+        activate MutasiCtrl
+        MutasiCtrl -> DB: UPDATE incidents\nSET status = ?, notes = ?
+        MutasiCtrl --> UI: 200 OK
+        deactivate MutasiCtrl
+        
+        UI --> PIC: "Status updated ✓"
+        
+        ' Notifikasi ke Manager & Visitor
+        UI -> NotifService: notifyIncidentUpdate(incidentId, status)
+        NotifService -> NotifService: Send updates
+        
+    else Status = Resolved
+        UI --> PIC: Badge: "✓ Resolved"
+    end
+    
+else View: Statistik Real-Time
+    UI -> MutasiCtrl: GET /api/mutasi/stats/realtime\n?picId={}
+    activate MutasiCtrl
+    
+    MutasiCtrl -> MutasiRepo: getRealtimeStats(picId)
+    MutasiRepo -> DB: Complex query:\n- Count by status\n- Count by kategori\n- Avg duration\n- Incident rate\n- Trend analysis
+    DB --> MutasiRepo: Stats data
+    MutasiRepo --> MutasiCtrl: Statistics
+    MutasiCtrl --> UI: 200 OK {stats}
+    deactivate MutasiCtrl
+    
+    UI --> PIC: Dashboard real-time:\n📊 Charts:\n- Items by category (Pie)\n- Trend over time (Line)\n- Status distribution (Bar)\n- Incident rate (Gauge)
+    
+    UI --> PIC: Key metrics:\n- Avg duration: [X] jam\n- Success rate: [Y]%\n- Most common category\n- Peak hours
+end
+
+note over PIC, UI
+    PIC dapat:
+    ✓ Monitor semua barang visitor mereka
+    ✓ Track status real-time
+    ✓ Kirim reminder ke visitor
+    ✓ Review incident
+    ✓ Update status penanganan
+    ✓ Generate laporan
+    ✓ Lihat statistik & trend
+end note
+
+deactivate UI
+
+@enduml
